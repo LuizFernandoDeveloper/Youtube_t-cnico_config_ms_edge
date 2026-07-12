@@ -45,6 +45,7 @@ foreach ($file in $psFiles) {
 $configPath = Join-Path $root "profiles.json"
 $packsPath = Join-Path $root "extension-packs.json"
 $channelMapPath = Join-Path $root "channel-map.csv"
+$accountAssetsPath = Join-Path $root "Assets\accounts\accounts-assets.json"
 
 $config = Read-JsonFile -Path $configPath
 $packs = Read-JsonFile -Path $packsPath
@@ -75,6 +76,23 @@ foreach ($url in (Get-StartupPages -Profile $cofreProfile)) {
 $cofrePack = Get-ExtensionPack -ExtensionPacks $packs -Name "cofre"
 Assert-Equal 1 @($cofrePack.extensions).Count "Pacote cofre deve ter uma extensao"
 Assert-True ([string]$cofrePack.extensions[0].name -match "Kaspersky Password Manager") "Pacote cofre deve conter Kaspersky Password Manager"
+
+$accountAssets = Read-JsonFile -Path $accountAssetsPath
+Assert-Equal 4 @($accountAssets.accounts).Count "Deve haver imagens para as quatro contas"
+foreach ($account in @($accountAssets.accounts)) {
+    $artPath = Join-Path (Split-Path -Parent $accountAssetsPath) ([string]$account.art)
+    $cardPath = Join-Path (Split-Path -Parent $accountAssetsPath) ([string]$account.card)
+    Assert-True (Test-Path -LiteralPath $artPath -PathType Leaf) "Arte da conta deve existir: $artPath"
+    Assert-True (Test-Path -LiteralPath $cardPath -PathType Leaf) "Card da conta deve existir: $cardPath"
+}
+
+foreach ($accountProperty in $config.accounts.PSObject.Properties) {
+    $account = $accountProperty.Value
+    Assert-True (-not [string]::IsNullOrWhiteSpace([string]$account.image)) "Conta '$($accountProperty.Name)' deve ter image"
+    Assert-True (-not [string]::IsNullOrWhiteSpace([string]$account.art)) "Conta '$($accountProperty.Name)' deve ter art"
+    Assert-True (Test-Path -LiteralPath (Resolve-FactoryPath -Path ([string]$account.image) -BasePath $root) -PathType Leaf) "Imagem referenciada deve existir para '$($accountProperty.Name)'"
+    Assert-True (Test-Path -LiteralPath (Resolve-FactoryPath -Path ([string]$account.art) -BasePath $root) -PathType Leaf) "Arte referenciada deve existir para '$($accountProperty.Name)'"
+}
 
 $channelRows = @(Read-ChannelMap -Path $channelMapPath)
 Assert-True ($channelRows.Count -ge 50) "channel-map.csv deve ter conteudo util"

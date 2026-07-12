@@ -41,3 +41,15 @@ Reports\duplicate-channels.csv
 Reports\migration-plan.html
 Reports\profile-status.csv
 ```
+
+As imagens das quatro contas ficam em:
+
+```text
+Assets\accounts
+├── accounts-assets.json
+├── accounts-preview.png
+├── 00-conta-matriz-administracao-card.png
+├── 10-base-academica-card.png
+├── 20-engenharia-tecnologia-aplicada-card.png
+└── 30-conteudo-diversificado-card.png
+```

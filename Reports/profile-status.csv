@@ -1,5 +1,5 @@
 ﻿"Codigo","Nome","Slug","Ativo","ContaGoogle","ContaRotulo","BrandAccountPadrao","PacoteExtensoes","DiretorioExiste","Inicializado","Diretorio"
-"00","Administração Google","00-Administracao-Google","True","andradeluizfernandorodrigues@gmail.com","Conta matriz","Luiz Fernando Rodrigues","administracao","False","False","C:\EdgeProfiles\00-Administracao-Google"
+"00","Administração Google","00-Administracao-Google","True","andradeluizfernandorodrigues@gmail.com","Conta matriz","Luiz Fernando Rodrigues","administracao","True","True","C:\EdgeProfiles\00-Administracao-Google"
 "01","Pesquisa e Referências","01-Pesquisa-Referencias","True","andradeluizfernandorodrigues@gmail.com","Conta matriz","","pesquisa","False","False","C:\EdgeProfiles\01-Pesquisa-Referencias"
 "10","Base Acadêmica","10-Base-Academica","True","luiz.educacao.baseacademica@gmail.com","Conta acadêmica","Base Acadêmica","academico","False","False","C:\EdgeProfiles\10-Base-Academica"
 "20","Engenharia Elétrica, Eletrônica e Automação","20-Engenharia-Eletrica-Automacao","True","luiz.educacao.base.engenharia@gmail.com","Conta engenharia","Engenharia Elétrica","engenharia","False","False","C:\EdgeProfiles\20-Engenharia-Eletrica-Automacao"

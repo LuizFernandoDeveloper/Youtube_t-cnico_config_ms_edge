@@ -9,19 +9,27 @@
   "accounts": {
     "matriz": {
       "label": "Conta matriz e administracao",
-      "email": "andradeluizfernandorodrigues@gmail.com"
+      "email": "andradeluizfernandorodrigues@gmail.com",
+      "image": ".\\Assets\\accounts\\00-conta-matriz-administracao-card.png",
+      "art": ".\\Assets\\accounts\\00-conta-matriz-administracao-art.png"
     },
     "academica": {
       "label": "Base academica",
-      "email": "luiz.educacao.baseacademica@gmail.com"
+      "email": "luiz.educacao.baseacademica@gmail.com",
+      "image": ".\\Assets\\accounts\\10-base-academica-card.png",
+      "art": ".\\Assets\\accounts\\10-base-academica-art.png"
     },
     "engenharia": {
       "label": "Engenharia e tecnologia aplicada",
-      "email": "luiz.educacao.base.engenharia@gmail.com"
+      "email": "luiz.educacao.base.engenharia@gmail.com",
+      "image": ".\\Assets\\accounts\\20-engenharia-tecnologia-aplicada-card.png",
+      "art": ".\\Assets\\accounts\\20-engenharia-tecnologia-aplicada-art.png"
     },
     "diversa": {
       "label": "Conteudo diversificado",
-      "email": "rodrigesadrade@gmail.com"
+      "email": "rodrigesadrade@gmail.com",
+      "image": ".\\Assets\\accounts\\30-conteudo-diversificado-card.png",
+      "art": ".\\Assets\\accounts\\30-conteudo-diversificado-art.png"
     }
   },
   "profiles": [

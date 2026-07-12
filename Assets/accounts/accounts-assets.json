@@ -1,0 +1,41 @@
+{
+  "accounts": [
+    {
+      "key": "matriz",
+      "title": "Conta Matriz",
+      "subtitle": "Administração Google",
+      "email": "andradeluizfernandorodrigues@gmail.com",
+      "art": "00-conta-matriz-administracao-art.png",
+      "card": "00-conta-matriz-administracao-card.png",
+      "profileCodes": ["00", "01"]
+    },
+    {
+      "key": "academica",
+      "title": "Base Acadêmica",
+      "subtitle": "Estudos, pesquisa e idiomas",
+      "email": "luiz.educacao.baseacademica@gmail.com",
+      "art": "10-base-academica-art.png",
+      "card": "10-base-academica-card.png",
+      "profileCodes": ["10"]
+    },
+    {
+      "key": "engenharia",
+      "title": "Engenharia",
+      "subtitle": "Tecnologia aplicada",
+      "email": "luiz.educacao.base.engenharia@gmail.com",
+      "art": "20-engenharia-tecnologia-aplicada-art.png",
+      "card": "20-engenharia-tecnologia-aplicada-card.png",
+      "profileCodes": ["20", "21", "22", "23", "24"]
+    },
+    {
+      "key": "diversa",
+      "title": "Conteúdo Diversificado",
+      "subtitle": "Consumo, cultura e mercado",
+      "email": "rodrigesadrade@gmail.com",
+      "art": "30-conteudo-diversificado-art.png",
+      "card": "30-conteudo-diversificado-card.png",
+      "profileCodes": ["30", "40", "41", "50", "60", "70"]
+    }
+  ],
+  "preview": "accounts-preview.png"
+}
