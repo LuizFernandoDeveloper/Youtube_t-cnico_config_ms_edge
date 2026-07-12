@@ -33,6 +33,7 @@ Import-Module (Join-Path $moduleRoot "ProfileManager.psm1") -Force
 Import-Module (Join-Path $moduleRoot "ExtensionManager.psm1") -Force
 Import-Module (Join-Path $moduleRoot "ShortcutManager.psm1") -Force
 Import-Module (Join-Path $moduleRoot "ChannelMapManager.psm1") -Force
+Import-Module (Join-Path $moduleRoot "SecurityAssistant.psm1") -Force
 
 $psFiles = @(Get-ChildItem -Path $root -Recurse -Include *.ps1, *.psm1)
 foreach ($file in $psFiles) {
@@ -100,6 +101,11 @@ $channelErrors = @(Get-ChannelMapValidationErrors -Rows $channelRows -Config $co
 Assert-Equal 0 $channelErrors.Count "channel-map.csv deve ser valido"
 $duplicates = @(Get-DuplicateChannelRows -Rows $channelRows)
 Assert-True ($duplicates.Count -ge 4) "Deve detectar canais duplicados entre contas"
+
+$securityStatus = Get-KasperskySecurityStatus
+Assert-True ($null -ne $securityStatus) "Checagem segura do Kaspersky deve retornar status"
+Assert-True ($securityStatus.PSObject.Properties.Name -contains "PasswordManagerRunning") "Status deve informar PasswordManagerRunning"
+Assert-True ($securityStatus.PSObject.Properties.Name -contains "Processes") "Status deve informar Processes"
 
 $testReports = Join-Path ([System.IO.Path]::GetTempPath()) ("EdgeProfileFactoryReportsTest_{0}" -f ([Guid]::NewGuid().ToString("N")))
 $reportResult = New-ChannelReports -ChannelMapPath $channelMapPath -ReportsDirectory $testReports -Config $config -BaseDirectory $baseDirectory

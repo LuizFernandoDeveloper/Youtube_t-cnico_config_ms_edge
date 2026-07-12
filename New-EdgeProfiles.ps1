@@ -10,6 +10,7 @@ param(
     [switch]$Backup,
     [switch]$Restore,
     [switch]$Reports,
+    [switch]$SecurityCheck,
     [string]$BackupPath,
     [string]$RemoveProfile,
     [switch]$OpenAll,
@@ -37,6 +38,7 @@ Import-Module (Join-Path $moduleRoot "ShortcutManager.psm1") -Force
 Import-Module (Join-Path $moduleRoot "ExtensionManager.psm1") -Force
 Import-Module (Join-Path $moduleRoot "BackupManager.psm1") -Force
 Import-Module (Join-Path $moduleRoot "ChannelMapManager.psm1") -Force
+Import-Module (Join-Path $moduleRoot "SecurityAssistant.psm1") -Force
 
 function Write-ValidationAndExit {
     param([string[]]$Errors)
@@ -288,6 +290,9 @@ function Invoke-ManualBrandAccountCheck {
     Write-Host ("-" * 72) -ForegroundColor DarkGray
     Write-Host ("Perfil criado: {0}" -f $Profile.name) -ForegroundColor Cyan
     Write-Host ("-" * 72) -ForegroundColor DarkGray
+    $kasperskyStatus = Get-KasperskySecurityStatus
+    Write-KasperskyManualLoginGuidance -Status $kasperskyStatus
+    Write-Host ""
     if (-not [string]::IsNullOrWhiteSpace($googleAccount)) {
         Write-Host "1. Entre manualmente na Conta Google:"
         Write-Host ("   {0}" -f $googleAccount) -ForegroundColor Yellow
@@ -682,6 +687,12 @@ if (Test-Path -LiteralPath $channelMapPath -PathType Leaf) {
     if ($channelErrors.Count -gt 0) {
         Write-ValidationAndExit -Errors $channelErrors
     }
+}
+
+if ($SecurityCheck) {
+    $securityStatus = Get-KasperskySecurityStatus
+    Write-KasperskySecurityStatus -Status $securityStatus
+    return
 }
 
 if ($DryRun) {

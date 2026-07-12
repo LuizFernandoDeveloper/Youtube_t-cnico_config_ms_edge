@@ -1,0 +1,8 @@
+# Local browser/profile data and backups may contain private data.
+Backups/
+Logs/
+*.zip
+
+# Local PowerShell/runtime noise.
+*.tmp
+*.log
