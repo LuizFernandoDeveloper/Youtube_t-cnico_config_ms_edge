@@ -89,7 +89,7 @@ function New-EdgeProfileShortcut {
     $shell = New-Object -ComObject WScript.Shell
     $shortcut = $shell.CreateShortcut($ShortcutPath)
     $shortcut.TargetPath = $EdgePath
-    $shortcut.Arguments = '--user-data-dir="{0}" --no-first-run' -f $UserDataDir
+    $shortcut.Arguments = '--user-data-dir="{0}" --no-first-run --disable-sync --disable-background-mode --no-default-browser-check' -f $UserDataDir
     $shortcut.WorkingDirectory = Split-Path -Parent $EdgePath
     if (-not [string]::IsNullOrWhiteSpace($IconPath) -and (Test-Path -LiteralPath $IconPath -PathType Leaf)) {
         $shortcut.IconLocation = "$IconPath,0"

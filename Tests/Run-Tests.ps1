@@ -54,7 +54,12 @@ Assert-True ($configCallIndex -lt $initCallIndex) "Branding/configuracao deve ac
 
 $edgeDetectionScript = Get-Content -LiteralPath (Join-Path $moduleRoot "EdgeDetection.psm1") -Raw -Encoding UTF8
 Assert-True ($edgeDetectionScript.Contains("--disable-background-mode")) "Inicializacao do Edge deve desabilitar background mode"
+Assert-True ($edgeDetectionScript.Contains("--disable-sync")) "Inicializacao do Edge deve desabilitar sync"
 Assert-True ($edgeDetectionScript.Contains("Stop-Process -Id `$process.ProcessId -Force")) "Fechamento do Edge deve ter fallback forcado"
+
+$shortcutManagerScript = Get-Content -LiteralPath (Join-Path $moduleRoot "ShortcutManager.psm1") -Raw -Encoding UTF8
+Assert-True ($shortcutManagerScript.Contains("--disable-sync")) "Atalhos devem desabilitar sync"
+Assert-True ($shortcutManagerScript.Contains("--disable-background-mode")) "Atalhos devem desabilitar background mode"
 
 $configPath = Join-Path $root "profiles.json"
 $packsPath = Join-Path $root "extension-packs.json"
@@ -115,6 +120,63 @@ foreach ($accountProperty in $config.accounts.PSObject.Properties) {
 $engineeringProfile = @($allProfiles | Where-Object { (Get-ProfileCode -Profile $_) -eq "20" }) | Select-Object -First 1
 $engineeringIcon = Get-ProfileShortcutIconPath -Config $config -Profile $engineeringProfile
 Assert-True (Test-Path -LiteralPath $engineeringIcon -PathType Leaf) "Perfil de engenharia deve resolver icone de atalho"
+
+$signinTestRoot = Join-Path ([System.IO.Path]::GetTempPath()) ("EdgeProfileFactorySigninTest_{0}" -f ([Guid]::NewGuid().ToString("N")))
+try {
+    $signinProfileDir = Get-ProfileDirectory -BaseDirectory $signinTestRoot -Profile $engineeringProfile
+    New-Item -ItemType Directory -Path (Join-Path $signinProfileDir "Default") -Force | Out-Null
+
+    $mixedPreferences = [pscustomobject]@{
+        account_info = @([pscustomobject]@{ email = "luiz.fernando.rodrigues.andrade.souza@hotmail.com" })
+        signin = [pscustomobject]@{ allowed = $true }
+        sync = [pscustomobject]@{ requested = $true }
+        profile = [pscustomobject]@{ name = "Conta misturada" }
+    }
+    $mixedPreferences | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath (Join-Path $signinProfileDir "Default\Preferences") -Encoding UTF8
+
+    $mixedLocalState = [pscustomobject]@{
+        profile = [pscustomobject]@{
+            info_cache = [pscustomobject]@{
+                Default = [pscustomobject]@{
+                    user_name = "luiz.fernando.rodrigues.andrade.souza@hotmail.com"
+                    gaia_name = "Luiz Fernando"
+                    signin_required = $true
+                }
+            }
+        }
+    }
+    $mixedLocalState | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath (Join-Path $signinProfileDir "Local State") -Encoding UTF8
+
+    $signinStateBefore = Get-EdgeBrowserSigninState -UserDataDir $signinProfileDir
+    Assert-True ([bool]$signinStateBefore.HasBrowserSigninState) "Auditoria deve detectar estado de login do navegador"
+    Assert-Equal "luiz.fernando.rodrigues.andrade.souza@hotmail.com" ([string]$signinStateBefore.LocalStateUser) "Auditoria deve ler e-mail do Local State"
+
+    $factoryAudit = @(Get-FactoryProfileSigninAudit -Config $config -BaseDirectory $signinTestRoot | Where-Object { $_.Slug -eq [string]$engineeringProfile.slug })
+    Assert-Equal 1 $factoryAudit.Count "Auditoria da fabrica deve retornar o perfil de engenharia"
+    Assert-True ([bool]$factoryAudit[0].LooksMixed) "Auditoria da fabrica deve marcar mistura de login"
+
+    $clearResult = Clear-EdgeBrowserSigninState -UserDataDir $signinProfileDir
+    Assert-True ([bool]$clearResult.Changed) "Limpeza deve alterar arquivos quando ha login/sync"
+    Assert-True (@($clearResult.Backups).Count -ge 2) "Limpeza deve criar backups antes de escrever"
+
+    $signinStateAfter = Get-EdgeBrowserSigninState -UserDataDir $signinProfileDir
+    Assert-True (-not [bool]$signinStateAfter.HasBrowserSigninState) "Limpeza deve remover estado de login do navegador"
+
+    $preferencesAfterClear = Get-Content -LiteralPath (Join-Path $signinProfileDir "Default\Preferences") -Raw -Encoding UTF8 | ConvertFrom-Json
+    Assert-True (-not ($preferencesAfterClear.PSObject.Properties.Name -contains "account_info")) "Limpeza deve remover account_info"
+    Assert-True (-not ($preferencesAfterClear.PSObject.Properties.Name -contains "signin")) "Limpeza deve remover signin"
+    Assert-True (-not ($preferencesAfterClear.PSObject.Properties.Name -contains "sync")) "Limpeza deve remover sync"
+
+    $localStateAfterClear = Get-Content -LiteralPath (Join-Path $signinProfileDir "Local State") -Raw -Encoding UTF8 | ConvertFrom-Json
+    Assert-Equal "" ([string]$localStateAfterClear.profile.info_cache.Default.user_name) "Limpeza deve apagar user_name do Edge"
+    Assert-Equal "" ([string]$localStateAfterClear.profile.info_cache.Default.gaia_name) "Limpeza deve apagar gaia_name do Edge"
+    Assert-True (-not [bool]$localStateAfterClear.profile.info_cache.Default.signin_required) "Limpeza deve remover exigencia de signin"
+}
+finally {
+    if (Test-Path -LiteralPath $signinTestRoot) {
+        Remove-Item -LiteralPath $signinTestRoot -Recurse -Force
+    }
+}
 
 $brandingTestRoot = Join-Path ([System.IO.Path]::GetTempPath()) ("EdgeProfileFactoryBrandingTest_{0}" -f ([Guid]::NewGuid().ToString("N")))
 try {

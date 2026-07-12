@@ -18,6 +18,40 @@ function Add-OrSetProperty {
     }
 }
 
+function Remove-ObjectPropertyIfExists {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        $Object,
+
+        [Parameter(Mandatory = $true)]
+        [string]$Name
+    )
+
+    if ($null -ne $Object -and ($Object.PSObject.Properties.Name -contains $Name)) {
+        $Object.PSObject.Properties.Remove($Name)
+        return $true
+    }
+
+    return $false
+}
+
+function Backup-FactoryFile {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Path
+    )
+
+    if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) {
+        return ""
+    }
+
+    $backupPath = "{0}.bak-{1}" -f $Path, (Get-Date -Format "yyyyMMddHHmmssfff")
+    Copy-Item -LiteralPath $Path -Destination $backupPath -Force
+    return $backupPath
+}
+
 function Get-FactoryConfigDirectory {
     [CmdletBinding()]
     param(
@@ -331,6 +365,206 @@ function Copy-SafeEdgeBaselineConfig {
     }
 }
 
+function Get-EdgeBrowserSigninState {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$UserDataDir
+    )
+
+    $localStateUser = ""
+    $gaiaName = ""
+    $profileName = ""
+    $accountEmails = New-Object System.Collections.Generic.List[string]
+    $sections = New-Object System.Collections.Generic.List[string]
+
+    $localStatePath = Join-Path $UserDataDir "Local State"
+    if (Test-Path -LiteralPath $localStatePath -PathType Leaf) {
+        try {
+            $localState = Read-JsonObjectOrEmpty -Path $localStatePath
+            $infoCache = Get-NestedValue -Object $localState -Path "profile.info_cache.Default"
+            if ($null -ne $infoCache) {
+                $localStateUser = [string]$infoCache.user_name
+                $gaiaName = [string]$infoCache.gaia_name
+            }
+        }
+        catch {
+            $sections.Add("local_state_parse_error")
+        }
+    }
+
+    $preferencesPath = Join-Path $UserDataDir "Default\Preferences"
+    if (Test-Path -LiteralPath $preferencesPath -PathType Leaf) {
+        try {
+            $preferences = Read-JsonObjectOrEmpty -Path $preferencesPath
+            $profileName = [string](Get-NestedValue -Object $preferences -Path "profile.name")
+
+            foreach ($section in @("account_info", "signin", "sync")) {
+                if ($preferences.PSObject.Properties.Name -contains $section) {
+                    $sections.Add($section)
+                }
+            }
+
+            if ($preferences.PSObject.Properties.Name -contains "account_info") {
+                foreach ($account in @($preferences.account_info)) {
+                    $email = [string]$account.email
+                    if (-not [string]::IsNullOrWhiteSpace($email)) {
+                        $accountEmails.Add($email)
+                    }
+                }
+            }
+        }
+        catch {
+            $sections.Add("preferences_parse_error")
+        }
+    }
+
+    [pscustomobject]@{
+        LocalStateUser = $localStateUser
+        GaiaName = $gaiaName
+        ProfileName = $profileName
+        AccountEmails = $accountEmails.ToArray()
+        Sections = $sections.ToArray()
+        HasBrowserSigninState = (
+            -not [string]::IsNullOrWhiteSpace($localStateUser) -or
+            -not [string]::IsNullOrWhiteSpace($gaiaName) -or
+            $accountEmails.Count -gt 0 -or
+            $sections.Count -gt 0
+        )
+    }
+}
+
+function Get-FactoryProfileSigninAudit {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        $Config,
+
+        [Parameter(Mandatory = $true)]
+        [string]$BaseDirectory
+    )
+
+    foreach ($profile in (Get-ConfiguredProfiles -Config $Config)) {
+        $profileDirectory = Get-ProfileDirectory -BaseDirectory $BaseDirectory -Profile $profile
+        $state = Get-EdgeBrowserSigninState -UserDataDir $profileDirectory
+        $expectedGoogleAccount = [string]$profile.googleAccount
+        $edgeEmails = @($state.AccountEmails)
+
+        [pscustomobject]@{
+            Code = Get-ProfileCode -Profile $profile
+            Slug = [string]$profile.slug
+            Name = [string]$profile.name
+            ExpectedGoogleAccount = $expectedGoogleAccount
+            EdgeBrowserAccountEmails = ($edgeEmails -join " | ")
+            LocalStateUser = [string]$state.LocalStateUser
+            GaiaName = [string]$state.GaiaName
+            BrowserSections = (@($state.Sections) -join " | ")
+            HasBrowserSigninState = [bool]$state.HasBrowserSigninState
+            LooksMixed = [bool]$state.HasBrowserSigninState
+            Directory = $profileDirectory
+        }
+    }
+}
+
+function Clear-EdgeBrowserSigninState {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$UserDataDir
+    )
+
+    if ((Get-Command Test-EdgeUserDataDirInUse -ErrorAction SilentlyContinue) -and (Test-EdgeUserDataDirInUse -UserDataDir $UserDataDir)) {
+        throw "Feche o Edge antes de limpar estado de login/sync: $UserDataDir"
+    }
+
+    $changed = $false
+    $backups = New-Object System.Collections.Generic.List[string]
+
+    $preferencesPath = Join-Path $UserDataDir "Default\Preferences"
+    if (Test-Path -LiteralPath $preferencesPath -PathType Leaf) {
+        $preferences = Read-JsonObjectOrEmpty -Path $preferencesPath
+        $removed = $false
+        foreach ($section in @("account_info", "signin", "sync")) {
+            if (Remove-ObjectPropertyIfExists -Object $preferences -Name $section) {
+                $removed = $true
+            }
+        }
+
+        if ($removed) {
+            $backup = Backup-FactoryFile -Path $preferencesPath
+            if ($backup) {
+                $backups.Add($backup)
+            }
+            Write-JsonObject -Object $preferences -Path $preferencesPath
+            $changed = $true
+        }
+    }
+
+    $localStatePath = Join-Path $UserDataDir "Local State"
+    if (Test-Path -LiteralPath $localStatePath -PathType Leaf) {
+        $localState = Read-JsonObjectOrEmpty -Path $localStatePath
+        $infoCache = Get-NestedValue -Object $localState -Path "profile.info_cache.Default"
+        $changedLocalState = $false
+
+        if ($null -ne $infoCache) {
+            foreach ($field in @("user_name", "gaia_name", "hosted_domain", "account_id", "managed_user_id", "gaia_id", "signin_required")) {
+                if ($infoCache.PSObject.Properties.Name -contains $field) {
+                    if ($field -eq "signin_required") {
+                        $infoCache.$field = $false
+                    }
+                    else {
+                        $infoCache.$field = ""
+                    }
+                    $changedLocalState = $true
+                }
+            }
+        }
+
+        if ($changedLocalState) {
+            $backup = Backup-FactoryFile -Path $localStatePath
+            if ($backup) {
+                $backups.Add($backup)
+            }
+            Write-JsonObject -Object $localState -Path $localStatePath
+            $changed = $true
+        }
+    }
+
+    [pscustomobject]@{
+        Changed = $changed
+        Backups = $backups.ToArray()
+    }
+}
+
+function Clear-FactoryProfileSigninState {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        $Config,
+
+        [Parameter(Mandatory = $true)]
+        [string]$BaseDirectory
+    )
+
+    $results = New-Object System.Collections.Generic.List[object]
+    foreach ($profile in (Get-ConfiguredProfiles -Config $Config)) {
+        $profileDirectory = Get-ProfileDirectory -BaseDirectory $BaseDirectory -Profile $profile
+        if (-not (Test-Path -LiteralPath $profileDirectory -PathType Container)) {
+            continue
+        }
+
+        $result = Clear-EdgeBrowserSigninState -UserDataDir $profileDirectory
+        $results.Add([pscustomobject]@{
+            Code = Get-ProfileCode -Profile $profile
+            Slug = [string]$profile.slug
+            Changed = [bool]$result.Changed
+            BackupCount = @($result.Backups).Count
+        })
+    }
+
+    return $results.ToArray()
+}
+
 function Get-AvatarIndexForProfile {
     [CmdletBinding()]
     param(
@@ -465,4 +699,4 @@ function Set-ProfileAccountConfiguration {
     Set-EdgeProfileBranding -Config $Config -Profile $Profile -UserDataDir $targetDirectory -BaselineSourceSlug $BaselineSourceSlug -BaselineApplied:$baselineApplied
 }
 
-Export-ModuleMember -Function Get-AccountForProfile, Get-ProfileAccountAssetPath, Get-ProfileShortcutIconPath, Copy-SafeEdgeBaselineConfig, Set-EdgeProfileBranding, Set-ProfileAccountConfiguration
+Export-ModuleMember -Function Get-AccountForProfile, Get-ProfileAccountAssetPath, Get-ProfileShortcutIconPath, Copy-SafeEdgeBaselineConfig, Get-EdgeBrowserSigninState, Get-FactoryProfileSigninAudit, Clear-EdgeBrowserSigninState, Clear-FactoryProfileSigninState, Set-EdgeProfileBranding, Set-ProfileAccountConfiguration

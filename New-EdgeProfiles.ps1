@@ -12,6 +12,8 @@ param(
     [switch]$Reports,
     [switch]$SecurityCheck,
     [switch]$InspectNativeProfiles,
+    [switch]$AuditFactoryProfiles,
+    [switch]$SanitizeFactoryProfiles,
     [string]$BackupPath,
     [string]$RemoveProfile,
     [switch]$OpenAll,
@@ -22,6 +24,7 @@ param(
     [switch]$ApplyBaseConfig,
     [string]$BaseProfileSlug = "00-Administracao-Google",
     [switch]$FullAuto,
+    [switch]$NoBrowser,
 
     [switch]$UndoExtensionPolicies,
     [switch]$CloseAfterInit,
@@ -51,8 +54,10 @@ Import-Module (Join-Path $moduleRoot "NativeEdgeProfileInspector.psm1") -Force
 if ($FullAuto) {
     $YesToAll = $true
     $ApplyBaseConfig = $true
+    $SanitizeFactoryProfiles = $true
 }
 
+$script:CreateExplicitlyRequested = $PSBoundParameters.ContainsKey("Create") -or $PSBoundParameters.ContainsKey("FullAuto")
 $script:AutoApprovedAll = [bool]$YesToAll
 
 function Write-ValidationAndExit {
@@ -266,7 +271,7 @@ function Invoke-ProfileInitialization {
         [string]$UserDataDir
     )
 
-    if ($SkipEdgeInitialization) {
+    if ($SkipEdgeInitialization -or $NoBrowser) {
         Write-Log -Level "INFO" -Message "Inicializacao do Edge ignorada para $($Profile.name)."
         return
     }
@@ -296,6 +301,11 @@ function Invoke-ManualBrandAccountCheck {
     $brandAccount = [string]$Profile.defaultBrandAccount
 
     if ([string]::IsNullOrWhiteSpace($googleAccount) -and [string]::IsNullOrWhiteSpace($brandAccount)) {
+        return
+    }
+
+    if ($NoBrowser) {
+        Write-Log -Level "INFO" -Message "NoBrowser: orientacao interativa de login/canal ignorada para $($Profile.name)."
         return
     }
 
@@ -366,6 +376,131 @@ function Test-EdgeProfileInitializedDirectory {
     $localState = Join-Path $UserDataDir "Local State"
     $defaultDir = Join-Path $UserDataDir "Default"
     return (Test-Path -LiteralPath $localState -PathType Leaf) -or (Test-Path -LiteralPath $defaultDir -PathType Container)
+}
+
+function Write-FactoryProfileSigninAudit {
+    param(
+        [object[]]$Audit
+    )
+
+    Write-Host ""
+    Write-Host ("-" * 96) -ForegroundColor DarkGray
+    Write-Host "Auditoria de login do navegador Edge nos perfis da fabrica" -ForegroundColor Cyan
+    Write-Host "Nao le senhas, cookies, tokens nem cofre do Kaspersky." -ForegroundColor Yellow
+    Write-Host ("-" * 96) -ForegroundColor DarkGray
+
+    if ($Audit.Count -eq 0) {
+        Write-Host "Nenhum perfil configurado encontrado."
+        return
+    }
+
+    foreach ($item in $Audit) {
+        $status = "OK"
+        $color = "Green"
+        if ($item.HasBrowserSigninState) {
+            $status = "MISTURA"
+            $color = "Yellow"
+        }
+
+        Write-Host ("[{0}] {1} - {2}" -f $status, $item.Code, $item.Name) -ForegroundColor $color
+        $expected = [string]$item.ExpectedGoogleAccount
+        if ([string]::IsNullOrWhiteSpace($expected)) {
+            $expected = "(sem conta Google esperada)"
+        }
+        Write-Host ("     Esperado no YouTube/Google: {0}" -f $expected) -ForegroundColor DarkGray
+
+        if ($item.HasBrowserSigninState) {
+            $edgeBits = @(
+                [string]$item.EdgeBrowserAccountEmails,
+                [string]$item.LocalStateUser,
+                [string]$item.GaiaName
+            ) | Where-Object { -not [string]::IsNullOrWhiteSpace($_) } | Select-Object -Unique
+
+            $edgeText = $edgeBits -join " | "
+            if ([string]::IsNullOrWhiteSpace($edgeText)) {
+                $edgeText = "(estado de signin/sync sem e-mail legivel)"
+            }
+            Write-Host ("     Edge browser account: {0}" -f $edgeText) -ForegroundColor Yellow
+            Write-Host ("     Secoes: {0}" -f $item.BrowserSections) -ForegroundColor DarkGray
+        }
+    }
+}
+
+function Invoke-FactoryProfileSigninSanitize {
+    param(
+        $Profile,
+        [string]$ProfileDirectory
+    )
+
+    if (-not (Test-Path -LiteralPath $ProfileDirectory -PathType Container)) {
+        Write-Log -Level "WARN" -Message "Perfil ainda nao existe; limpeza de login do Edge ignorada: $($Profile.slug)"
+        return [pscustomobject]@{
+            Code = Get-ProfileCode -Profile $Profile
+            Slug = [string]$Profile.slug
+            Changed = $false
+            BackupCount = 0
+            Status = "Missing"
+        }
+    }
+
+    if (Test-EdgeUserDataDirInUse -UserDataDir $ProfileDirectory) {
+        Write-Log -Level "WARN" -Message "Perfil aberto; tentando fechar somente esta instancia antes da limpeza: $($Profile.slug)"
+        $closed = Stop-EdgeProcessesForUserDataDir -UserDataDir $ProfileDirectory
+        if (-not $closed) {
+            Write-Log -Level "WARN" -Message "Limpeza de login do Edge ignorada porque o perfil segue aberto: $($Profile.slug)"
+            return [pscustomobject]@{
+                Code = Get-ProfileCode -Profile $Profile
+                Slug = [string]$Profile.slug
+                Changed = $false
+                BackupCount = 0
+                Status = "Open"
+            }
+        }
+    }
+
+    try {
+        $result = Clear-EdgeBrowserSigninState -UserDataDir $ProfileDirectory
+        $backupCount = @($result.Backups).Count
+        if ($result.Changed) {
+            Write-Log -Level "OK" -Message "Login/sync do navegador Edge limpo para $($Profile.slug). Backups: $backupCount"
+        }
+        else {
+            Write-Log -Level "INFO" -Message "Nenhum login/sync do navegador Edge encontrado em $($Profile.slug)."
+        }
+
+        return [pscustomobject]@{
+            Code = Get-ProfileCode -Profile $Profile
+            Slug = [string]$Profile.slug
+            Changed = [bool]$result.Changed
+            BackupCount = $backupCount
+            Status = "OK"
+        }
+    }
+    catch {
+        Write-Log -Level "WARN" -Message "Falha ao limpar login/sync do navegador Edge em $($Profile.slug): $($_.Exception.Message)"
+        return [pscustomobject]@{
+            Code = Get-ProfileCode -Profile $Profile
+            Slug = [string]$Profile.slug
+            Changed = $false
+            BackupCount = 0
+            Status = "Error"
+        }
+    }
+}
+
+function Invoke-FactoryProfilesSigninSanitize {
+    param(
+        $ConfigObject,
+        [string]$BaseDirectory
+    )
+
+    $results = New-Object System.Collections.Generic.List[object]
+    foreach ($profile in (Get-ConfiguredProfiles -Config $ConfigObject)) {
+        $profileDirectory = Get-ProfileDirectory -BaseDirectory $BaseDirectory -Profile $profile
+        $results.Add((Invoke-FactoryProfileSigninSanitize -Profile $profile -ProfileDirectory $profileDirectory))
+    }
+
+    return $results.ToArray()
 }
 
 function Get-ExistingFactoryArtifacts {
@@ -660,6 +795,10 @@ function Invoke-CreateProfiles {
             Set-ProfileAccountConfiguration -Config $ConfigObject -BaseDirectory $BaseDirectory -Profile $profile -BaselineSourceSlug $BaseProfileSlug -ApplyBaseConfig:$ApplyBaseConfig
         }
 
+        if ($SanitizeFactoryProfiles) {
+            Invoke-FactoryProfileSigninSanitize -Profile $profile -ProfileDirectory $profileDirectory | Out-Null
+        }
+
         if ($shouldInitialize) {
             Invoke-ProfileInitialization -EdgePath $edge.Path -Profile $profile -UserDataDir $profileDirectory
         }
@@ -676,7 +815,10 @@ function Invoke-CreateProfiles {
         }
     }
 
-    if ($ExtensionMode -eq "Assisted" -and $extensionQueue.Count -gt 0) {
+    if ($NoBrowser -and $extensionQueue.Count -gt 0) {
+        Write-Log -Level "INFO" -Message "NoBrowser: paginas de extensoes nao foram abertas."
+    }
+    elseif ($ExtensionMode -eq "Assisted" -and $extensionQueue.Count -gt 0) {
         Write-Log -Level "INFO" -Message "Abrindo paginas de extensoes na fase final para evitar conflito com configuracao dos perfis."
         foreach ($item in $extensionQueue) {
             Invoke-AssistedExtensionInstall -EdgePath $edge.Path -Profile $item.Profile -UserDataDir $item.UserDataDir -ExtensionPacks $ExtensionPacksObject -NonInteractive:$NonInteractive -YesToAll:($YesToAll -or $script:AutoApprovedAll)
@@ -754,6 +896,28 @@ if ($SecurityCheck) {
 if ($InspectNativeProfiles) {
     $nativeProfiles = @(Get-NativeEdgeProfiles)
     Write-NativeEdgeProfileReport -Profiles $nativeProfiles
+    return
+}
+
+if ($AuditFactoryProfiles) {
+    $signinAudit = @(Get-FactoryProfileSigninAudit -Config $configObject -BaseDirectory $baseDirectory)
+    Write-FactoryProfileSigninAudit -Audit $signinAudit
+    if (-not $script:CreateExplicitlyRequested -and -not $SanitizeFactoryProfiles) {
+        return
+    }
+}
+
+if ($SanitizeFactoryProfiles -and -not $script:CreateExplicitlyRequested) {
+    $sanitizeResults = @(Invoke-FactoryProfilesSigninSanitize -ConfigObject $configObject -BaseDirectory $baseDirectory)
+    Write-Host ""
+    Write-Host "Limpeza de login/sync do Edge concluida." -ForegroundColor Cyan
+    $changedCount = @($sanitizeResults | Where-Object { $_.Changed }).Count
+    $skippedCount = @($sanitizeResults | Where-Object { $_.Status -ne "OK" }).Count
+    Write-Host ("Perfis alterados: {0}" -f $changedCount)
+    Write-Host ("Perfis ignorados/com aviso: {0}" -f $skippedCount)
+
+    $signinAudit = @(Get-FactoryProfileSigninAudit -Config $configObject -BaseDirectory $baseDirectory)
+    Write-FactoryProfileSigninAudit -Audit $signinAudit
     return
 }
 

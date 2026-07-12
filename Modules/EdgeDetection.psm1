@@ -167,6 +167,7 @@ function Start-EdgeProfile {
     $arguments.Add(("--user-data-dir=""{0}""" -f $UserDataDir))
     $arguments.Add("--disable-background-mode")
     $arguments.Add("--no-default-browser-check")
+    $arguments.Add("--disable-sync")
 
     if ($NoFirstRun) {
         $arguments.Add("--no-first-run")

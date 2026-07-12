@@ -13,6 +13,8 @@ Projeto PowerShell para criar ambientes isolados do Microsoft Edge usando `--use
 .\New-EdgeProfiles.ps1 -Reports
 .\New-EdgeProfiles.ps1 -SecurityCheck
 .\New-EdgeProfiles.ps1 -InspectNativeProfiles
+.\New-EdgeProfiles.ps1 -AuditFactoryProfiles
+.\New-EdgeProfiles.ps1 -SanitizeFactoryProfiles -NoBrowser
 .\New-EdgeProfiles.ps1 -UpdateShortcuts
 .\New-EdgeProfiles.ps1 -Backup
 .\New-EdgeProfiles.ps1 -Restore -BackupPath ".\Backups\2026-07-12_173000"
@@ -25,9 +27,15 @@ Por padrao, os perfis sao definidos em `profiles.json`, os pacotes de extensoes 
 
 Importante: estes perfis sao ambientes isolados por `--user-data-dir`. Eles abrem pelos atalhos criados e nao aparecem como varias contas no seletor interno do Edge padrao.
 
+Os atalhos gerados tambem usam `--disable-sync`, `--disable-background-mode` e `--no-default-browser-check` para reduzir a chance de o Edge puxar a conta Microsoft do Windows para dentro dos ambientes isolados.
+
 Limite real da automacao: o script nao cria Contas Google, Brand Accounts nem perfis nativos dentro do seletor interno do Edge. A abordagem documentada e confiavel aqui e criar ambientes isolados por pasta de dados e atalhos. Login, escolha de Brand Account e instalacao final das extensoes continuam dependendo de acao manual no navegador.
 
 Use `-InspectNativeProfiles` para listar os perfis que aparecem no seletor interno do Edge, como `Perfil 1`, `Perfil 3` e `Pessoal 2`. Esse modo e somente leitura.
+
+Use `-AuditFactoryProfiles` para listar, sem abrir navegador, se algum perfil da fabrica recebeu estado de login/sync do proprio Edge. Se aparecer `MISTURA`, isso e o Edge mostrando a conta Microsoft/Windows no perfil isolado.
+
+Use `-SanitizeFactoryProfiles -NoBrowser` para limpar esse estado de login/sync do Edge nos perfis da fabrica sem tocar em senhas, cookies, tokens, cofre do Kaspersky ou dados de login de sites. O script cria backup dos arquivos antes de alterar.
 
 Quando o script detecta perfis ou atalhos criados em uma execucao anterior, ele mostra uma tela de recuperacao antes de continuar:
 
@@ -50,10 +58,18 @@ Na tela de plano, digitar apenas `Y` tambem vira "sim para tudo": aprova todos o
 
 `-FullAuto` equivale a criacao automatica com `-YesToAll` e `-ApplyBaseConfig`.
 
+`-NoBrowser` impede abertura de janelas do Edge durante a execucao. Com `-FullAuto`, o script tambem saneia login/sync do proprio Edge antes de inicializar cada perfil.
+
 Para uma primeira execucao mais estavel, crie/configure os ambientes sem abrir paginas de extensao:
 
 ```powershell
 .\New-EdgeProfiles.ps1 -Create -FullAuto -ExtensionMode None
+```
+
+Para fazer tudo no back, sem abrir navegador:
+
+```powershell
+.\New-EdgeProfiles.ps1 -Create -FullAuto -NoBrowser -ExtensionMode None
 ```
 
 Depois, abra as paginas de extensoes recomendadas em uma fase separada:
