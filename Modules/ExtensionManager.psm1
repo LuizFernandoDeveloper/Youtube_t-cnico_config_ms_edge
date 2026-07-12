@@ -106,7 +106,9 @@ function Invoke-AssistedExtensionInstall {
         [Parameter(Mandatory = $true)]
         $ExtensionPacks,
 
-        [switch]$NonInteractive
+        [switch]$NonInteractive,
+
+        [switch]$YesToAll
     )
 
     $items = @(Get-ProfileExtensionItems -Profile $Profile -ExtensionPacks $ExtensionPacks)
@@ -121,6 +123,13 @@ function Invoke-AssistedExtensionInstall {
         Write-Log -Level "WARN" -Message "Extensoes do perfil '$($Profile.name)' aguardam instalacao manual assistida."
     }
 
+    if ($YesToAll) {
+        $urls = @($items | ForEach-Object { [string]$_.url })
+        Start-EdgeProfile -EdgePath $EdgePath -UserDataDir $UserDataDir -Urls $urls -NoFirstRun -NewWindow | Out-Null
+        Write-Log -Level "WARN" -Message "YesToAll: todas as paginas de extensao foram abertas para $($Profile.name)."
+        return
+    }
+
     if ($NonInteractive) {
         Write-Host ""
         Write-Host "Extensoes recomendadas para $($Profile.name):" -ForegroundColor Cyan
@@ -131,9 +140,9 @@ function Invoke-AssistedExtensionInstall {
         return
     }
 
-    $selected = New-Object bool[] $items.Count
+    $status = New-Object string[] $items.Count
     for ($index = 0; $index -lt $items.Count; $index++) {
-        $selected[$index] = $true
+        $status[$index] = "Y"
     }
 
     while ($true) {
@@ -144,18 +153,19 @@ function Invoke-AssistedExtensionInstall {
         Write-Host ("Pacote: {0}" -f $Profile.extensionPack) -ForegroundColor DarkGray
         Write-Host ("-" * 72) -ForegroundColor DarkGray
         for ($index = 0; $index -lt $items.Count; $index++) {
-            $mark = "[ ]"
-            $color = "DarkGray"
-            if ($selected[$index]) {
-                $mark = "[x]"
-                $color = "White"
+            $color = "White"
+            if ($status[$index] -eq "N") {
+                $color = "DarkGray"
+            }
+            elseif ($status[$index] -eq "B") {
+                $color = "Red"
             }
 
-            Write-Host (" {0,2}. {1} {2}" -f ($index + 1), $mark, $items[$index].name) -ForegroundColor $color
+            Write-Host (" {0,2}. [{1}] {2}" -f ($index + 1), $status[$index], $items[$index].name) -ForegroundColor $color
         }
 
         Write-Host ""
-        Write-Host "Enter abre selecionadas | A aprova todas | 1 3 alterna itens | L limpa | T marca | P/N pula" -ForegroundColor Yellow
+        Write-Host "Enter abre Y | A tudo Y | Y 1 3 sim | N 2 pula | B 4 bloqueia | P pula perfil" -ForegroundColor Yellow
         $answer = Read-Host "Comando"
 
         if ([string]::IsNullOrWhiteSpace($answer) -or $answer -match "^[iI]$") {
@@ -164,21 +174,21 @@ function Invoke-AssistedExtensionInstall {
 
         if ($answer -match "^[aA]$") {
             for ($index = 0; $index -lt $items.Count; $index++) {
-                $selected[$index] = $true
+                $status[$index] = "Y"
             }
             break
         }
 
-        if ($answer -match "^[tT]$") {
+        if ($answer -match "^[tTyY]$") {
             for ($index = 0; $index -lt $items.Count; $index++) {
-                $selected[$index] = $true
+                $status[$index] = "Y"
             }
             continue
         }
 
         if ($answer -match "^[lL]$") {
             for ($index = 0; $index -lt $items.Count; $index++) {
-                $selected[$index] = $false
+                $status[$index] = "N"
             }
             continue
         }
@@ -188,12 +198,31 @@ function Invoke-AssistedExtensionInstall {
             return
         }
 
-        $numbers = @($answer -split "[,\s;]+" | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+        $parts = @($answer -split "[,\s;]+" | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+        $command = ""
+        if ($parts.Count -gt 0 -and $parts[0] -match "^[yYnNbB]$") {
+            $command = $parts[0].ToUpperInvariant()
+            $numbers = @($parts | Select-Object -Skip 1)
+        }
+        else {
+            $numbers = $parts
+        }
+
         $changed = $false
         foreach ($numberText in $numbers) {
             $number = 0
             if ([int]::TryParse($numberText, [ref]$number) -and $number -ge 1 -and $number -le $items.Count) {
-                $selected[$number - 1] = -not $selected[$number - 1]
+                if ($command) {
+                    $status[$number - 1] = $command
+                }
+                else {
+                    if ($status[$number - 1] -eq "Y") {
+                        $status[$number - 1] = "N"
+                    }
+                    else {
+                        $status[$number - 1] = "Y"
+                    }
+                }
                 $changed = $true
             }
         }
@@ -204,19 +233,29 @@ function Invoke-AssistedExtensionInstall {
     }
 
     $urls = New-Object System.Collections.Generic.List[string]
+    $blocked = New-Object System.Collections.Generic.List[string]
     for ($index = 0; $index -lt $items.Count; $index++) {
-        if ($selected[$index]) {
+        if ($status[$index] -eq "Y") {
             $urls.Add([string]$items[$index].url)
+        }
+        elseif ($status[$index] -eq "B") {
+            $blocked.Add([string]$items[$index].name)
         }
     }
 
     if ($urls.Count -eq 0) {
         Write-Log -Level "INFO" -Message "Nenhuma extensao selecionada para $($Profile.name)."
+        if ($blocked.Count -gt 0) {
+            Write-Log -Level "WARN" -Message "Extensoes bloqueadas nesta execucao para $($Profile.name): $($blocked -join ', ')"
+        }
         return
     }
 
     Start-EdgeProfile -EdgePath $EdgePath -UserDataDir $UserDataDir -Urls $urls.ToArray() -NoFirstRun -NewWindow | Out-Null
     Write-Log -Level "WARN" -Message "Instale manualmente as extensoes abertas para $($Profile.name)."
+    if ($blocked.Count -gt 0) {
+        Write-Log -Level "WARN" -Message "Extensoes bloqueadas nesta execucao para $($Profile.name): $($blocked -join ', ')"
+    }
     Read-Host "Quando terminar este perfil, pressione Enter para continuar" | Out-Null
 }
 

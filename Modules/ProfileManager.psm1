@@ -134,6 +134,51 @@ function Get-StartupPages {
     return @()
 }
 
+function Test-ProfileEnabled {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        $Profile
+    )
+
+    if (($Profile.PSObject.Properties.Name -contains "active") -and $false -eq [bool]$Profile.active) {
+        return $false
+    }
+
+    return $true
+}
+
+function Get-ConfiguredProfiles {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        $Config,
+
+        [switch]$IncludeInactive
+    )
+
+    $profiles = @($Config.profiles)
+    if ($IncludeInactive) {
+        return $profiles
+    }
+
+    return @($profiles | Where-Object { Test-ProfileEnabled -Profile $_ })
+}
+
+function Get-ProfileCode {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        $Profile
+    )
+
+    if ($Profile.PSObject.Properties.Name -contains "code" -and -not [string]::IsNullOrWhiteSpace([string]$Profile.code)) {
+        return [string]$Profile.code
+    }
+
+    return [string]$Profile.slug
+}
+
 function Test-AbsoluteHttpUrl {
     [CmdletBinding()]
     param(
@@ -172,6 +217,7 @@ function Test-ProfileConfig {
 
     $names = @{}
     $slugs = @{}
+    $codes = @{}
     $directories = @{}
     $invalidCharsPattern = "[{0}]" -f ([regex]::Escape((-join [System.IO.Path]::GetInvalidFileNameChars())))
     $reservedNames = @("CON", "PRN", "AUX", "NUL", "COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7", "COM8", "COM9", "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9")
@@ -179,6 +225,7 @@ function Test-ProfileConfig {
     foreach ($profile in @($Config.profiles)) {
         $name = [string]$profile.name
         $slug = [string]$profile.slug
+        $code = [string]$profile.code
         $extensionPack = [string]$profile.extensionPack
 
         if ([string]::IsNullOrWhiteSpace($name)) {
@@ -205,6 +252,16 @@ function Test-ProfileConfig {
         }
         else {
             $slugs[$slugKey] = $true
+        }
+
+        if (-not [string]::IsNullOrWhiteSpace($code)) {
+            $codeKey = $code.ToLowerInvariant()
+            if ($codes.ContainsKey($codeKey)) {
+                $errors.Add("Codigo duplicado: $code")
+            }
+            else {
+                $codes[$codeKey] = $true
+            }
         }
 
         if ($slug -match $invalidCharsPattern -or $slug -match "[\\/]" -or $slug -match "\.\." -or $slug.Trim() -ne $slug) {
@@ -235,13 +292,20 @@ function Test-ProfileConfig {
             $errors.Add("Pacote de extensoes inexistente em '$name': $extensionPack")
         }
 
+        if ($profile.PSObject.Properties.Name -contains "googleAccount") {
+            $googleAccount = [string]$profile.googleAccount
+            if (-not [string]::IsNullOrWhiteSpace($googleAccount) -and $googleAccount -notmatch "^[^@\s]+@[^@\s]+\.[^@\s]+$") {
+                $errors.Add("Conta Google invalida em '$name': $googleAccount")
+            }
+        }
+
         foreach ($url in (Get-StartupPages -Profile $profile)) {
             if (-not (Test-AbsoluteHttpUrl -Url ([string]$url))) {
                 $errors.Add("URL invalida em '$name': $url")
             }
         }
 
-        $isVault = $slug -ieq "Cofre" -or $name -ieq "Cofre"
+        $isVault = $slug -ieq "Cofre" -or $name -ieq "Cofre" -or $slug -match "(^|-)Cofre($|-)" -or $name -match "^Cofre\b" -or $code -eq "90"
         if ($isVault) {
             if ($extensionPack -ne "cofre") {
                 $errors.Add("O perfil Cofre deve usar somente o pacote 'cofre'.")
@@ -297,4 +361,4 @@ function Get-ProfileBySlug {
     return $null
 }
 
-Export-ModuleMember -Function Read-JsonFile, Resolve-FactoryPath, Test-PathInsideDirectory, Test-FactoryProtectedPath, Assert-SafeBaseDirectory, Get-ProfileDirectory, Get-StartupPages, Test-AbsoluteHttpUrl, Test-ProfileConfig, New-ProfileDirectory, Get-ProfileBySlug
+Export-ModuleMember -Function Read-JsonFile, Resolve-FactoryPath, Test-PathInsideDirectory, Test-FactoryProtectedPath, Assert-SafeBaseDirectory, Get-ProfileDirectory, Get-StartupPages, Test-ProfileEnabled, Get-ConfiguredProfiles, Get-ProfileCode, Test-AbsoluteHttpUrl, Test-ProfileConfig, New-ProfileDirectory, Get-ProfileBySlug

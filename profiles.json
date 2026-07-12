@@ -1,102 +1,237 @@
 {
   "baseDirectory": "C:\\EdgeProfiles",
   "backupDirectory": ".\\Backups",
+  "reportsDirectory": ".\\Reports",
+  "channelMap": ".\\channel-map.csv",
   "createDesktopShortcuts": true,
   "createStartMenuShortcuts": true,
   "startMenuFolder": "YouTube Tecnico",
+  "accounts": {
+    "matriz": {
+      "label": "Conta matriz e administracao",
+      "email": "andradeluizfernandorodrigues@gmail.com"
+    },
+    "academica": {
+      "label": "Base academica",
+      "email": "luiz.educacao.baseacademica@gmail.com"
+    },
+    "engenharia": {
+      "label": "Engenharia e tecnologia aplicada",
+      "email": "luiz.educacao.base.engenharia@gmail.com"
+    },
+    "diversa": {
+      "label": "Conteudo diversificado",
+      "email": "rodrigesadrade@gmail.com"
+    }
+  },
   "profiles": [
     {
-      "name": "YT - Engenharia",
-      "slug": "YT-Engenharia",
-      "extensionPack": "youtube-tecnico",
+      "code": "00",
+      "name": "Administração Google",
+      "slug": "00-Administracao-Google",
+      "googleAccount": "andradeluizfernandorodrigues@gmail.com",
+      "googleAccountLabel": "Conta matriz",
+      "defaultBrandAccount": "Luiz Fernando Rodrigues",
+      "extensionPack": "administracao",
       "startupPages": [
-        "https://www.youtube.com/",
-        "https://gemini.google.com/",
-        "https://notebooklm.google.com/"
+        "https://myaccount.google.com/",
+        "https://studio.youtube.com/",
+        "https://www.youtube.com/account"
       ]
     },
     {
-      "name": "YT - Software",
-      "slug": "YT-Software",
-      "extensionPack": "youtube-tecnico",
-      "startupPages": [
-        "https://www.youtube.com/",
-        "https://github.com/",
-        "https://gemini.google.com/"
-      ]
-    },
-    {
-      "name": "YT - Cyber e Embarcados",
-      "slug": "YT-Cyber-Embarcados",
-      "extensionPack": "youtube-tecnico",
-      "startupPages": [
-        "https://www.youtube.com/",
-        "https://github.com/",
-        "https://gemini.google.com/"
-      ]
-    },
-    {
-      "name": "YT - Aerospace e Ciencias",
-      "slug": "YT-Aerospace-Ciencias",
-      "extensionPack": "youtube-tecnico",
-      "startupPages": [
-        "https://www.youtube.com/",
-        "https://scholar.google.com/",
-        "https://gemini.google.com/"
-      ]
-    },
-    {
-      "name": "YT - Academico",
-      "slug": "YT-Academico",
-      "extensionPack": "youtube-tecnico",
-      "startupPages": [
-        "https://www.youtube.com/",
-        "https://scholar.google.com/",
-        "https://gemini.google.com/"
-      ]
-    },
-    {
-      "name": "YT - Negocios",
-      "slug": "YT-Negocios",
-      "extensionPack": "youtube-tecnico",
-      "startupPages": [
-        "https://www.youtube.com/",
-        "https://gemini.google.com/",
-        "https://notebooklm.google.com/"
-      ]
-    },
-    {
-      "name": "NotebookLM e IA",
-      "slug": "NotebookLM-IA",
-      "extensionPack": "notebooklm",
-      "startupPages": [
-        "https://notebooklm.google.com/",
-        "https://gemini.google.com/",
-        "https://drive.google.com/"
-      ]
-    },
-    {
-      "name": "Pesquisa Academica",
-      "slug": "Pesquisa-Academica",
+      "code": "01",
+      "name": "Pesquisa e Referências",
+      "slug": "01-Pesquisa-Referencias",
+      "googleAccount": "andradeluizfernandorodrigues@gmail.com",
+      "googleAccountLabel": "Conta matriz",
+      "defaultBrandAccount": "",
       "extensionPack": "pesquisa",
       "startupPages": [
         "https://scholar.google.com/",
-        "https://www.zotero.org/",
+        "https://notebooklm.google.com/",
+        "https://gemini.google.com/",
+        "https://www.zotero.org/"
+      ]
+    },
+    {
+      "code": "10",
+      "name": "Base Acadêmica",
+      "slug": "10-Base-Academica",
+      "googleAccount": "luiz.educacao.baseacademica@gmail.com",
+      "googleAccountLabel": "Conta acadêmica",
+      "defaultBrandAccount": "Base Acadêmica",
+      "extensionPack": "academico",
+      "startupPages": [
+        "https://www.youtube.com/",
+        "https://scholar.google.com/",
+        "https://gemini.google.com/"
+      ]
+    },
+    {
+      "code": "20",
+      "name": "Engenharia Elétrica, Eletrônica e Automação",
+      "slug": "20-Engenharia-Eletrica-Automacao",
+      "googleAccount": "luiz.educacao.base.engenharia@gmail.com",
+      "googleAccountLabel": "Conta engenharia",
+      "defaultBrandAccount": "Engenharia Elétrica",
+      "extensionPack": "engenharia",
+      "startupPages": [
+        "https://www.youtube.com/",
+        "https://gemini.google.com/",
+        "https://onedrive.live.com/",
+        "https://www.onenote.com/"
+      ]
+    },
+    {
+      "code": "21",
+      "name": "Engenharia Mecânica, Manufatura e Metrologia",
+      "slug": "21-Engenharia-Mecanica-Manufatura-Metrologia",
+      "googleAccount": "luiz.educacao.base.engenharia@gmail.com",
+      "googleAccountLabel": "Conta engenharia",
+      "defaultBrandAccount": "Engenharia Mecânica",
+      "extensionPack": "engenharia",
+      "startupPages": [
+        "https://www.youtube.com/",
+        "https://gemini.google.com/",
+        "https://onedrive.live.com/",
+        "https://www.onenote.com/"
+      ]
+    },
+    {
+      "code": "22",
+      "name": "Software, Embarcados, Redes e Cyber",
+      "slug": "22-Software-Embarcados-Redes-Cyber",
+      "googleAccount": "luiz.educacao.base.engenharia@gmail.com",
+      "googleAccountLabel": "Conta engenharia",
+      "defaultBrandAccount": "Dev & Software",
+      "extensionPack": "software",
+      "startupPages": [
+        "https://www.youtube.com/",
+        "https://github.com/",
+        "https://gemini.google.com/",
         "https://notebooklm.google.com/"
       ]
     },
     {
-      "name": "Pessoal",
-      "slug": "Pessoal",
-      "extensionPack": "pessoal",
+      "code": "23",
+      "name": "Aeroespacial, Aviação e Espaço",
+      "slug": "23-Aeroespacial-Aviacao-Espaco",
+      "googleAccount": "luiz.educacao.base.engenharia@gmail.com",
+      "googleAccountLabel": "Conta engenharia",
+      "defaultBrandAccount": "Engenharia Aeroespacial",
+      "extensionPack": "engenharia",
       "startupPages": [
         "https://www.youtube.com/",
-        "https://www.google.com/"
+        "https://scholar.google.com/",
+        "https://gemini.google.com/"
       ]
     },
     {
-      "name": "Cofre",
-      "slug": "Cofre",
+      "code": "24",
+      "name": "Engenharia Química e Processos",
+      "slug": "24-Engenharia-Quimica-Processos",
+      "googleAccount": "luiz.educacao.base.engenharia@gmail.com",
+      "googleAccountLabel": "Conta engenharia",
+      "defaultBrandAccount": "Engenharia Química",
+      "extensionPack": "engenharia",
+      "active": false,
+      "startupPages": [
+        "https://www.youtube.com/",
+        "https://scholar.google.com/",
+        "https://gemini.google.com/"
+      ]
+    },
+    {
+      "code": "30",
+      "name": "Computação, Hardware e Tecnologia",
+      "slug": "30-Computacao-Hardware-Tecnologia",
+      "googleAccount": "rodrigesadrade@gmail.com",
+      "googleAccountLabel": "Conta diversa",
+      "defaultBrandAccount": "Computador & Hardware & Sistema",
+      "extensionPack": "tecnologia",
+      "startupPages": [
+        "https://www.youtube.com/",
+        "https://github.com/",
+        "https://gemini.google.com/"
+      ]
+    },
+    {
+      "code": "40",
+      "name": "Economia, Finanças e Negócios",
+      "slug": "40-Economia-Financas-Negocios",
+      "googleAccount": "rodrigesadrade@gmail.com",
+      "googleAccountLabel": "Conta diversa",
+      "defaultBrandAccount": "Economia & Finanças",
+      "extensionPack": "negocios",
+      "startupPages": [
+        "https://www.youtube.com/",
+        "https://www.google.com/finance/",
+        "https://gemini.google.com/"
+      ]
+    },
+    {
+      "code": "41",
+      "name": "Agro, Produção e Mercado",
+      "slug": "41-Agro-Producao-Mercado",
+      "googleAccount": "rodrigesadrade@gmail.com",
+      "googleAccountLabel": "Conta diversa",
+      "defaultBrandAccount": "Agro News",
+      "extensionPack": "negocios",
+      "startupPages": [
+        "https://www.youtube.com/",
+        "https://www.noticiasagricolas.com.br/",
+        "https://gemini.google.com/"
+      ]
+    },
+    {
+      "code": "50",
+      "name": "Saúde, Performance e Comportamento",
+      "slug": "50-Saude-Performance-Comportamento",
+      "googleAccount": "rodrigesadrade@gmail.com",
+      "googleAccountLabel": "Conta diversa",
+      "defaultBrandAccount": "Esporte & Performance & Dieta & Saúde",
+      "extensionPack": "saude",
+      "startupPages": [
+        "https://www.youtube.com/",
+        "https://gemini.google.com/"
+      ]
+    },
+    {
+      "code": "60",
+      "name": "Veículos, Off-road e Overland",
+      "slug": "60-Veiculos-Offroad-Overland",
+      "googleAccount": "rodrigesadrade@gmail.com",
+      "googleAccountLabel": "Conta diversa",
+      "defaultBrandAccount": "Veículos",
+      "extensionPack": "pessoal",
+      "startupPages": [
+        "https://www.youtube.com/",
+        "https://www.google.com/maps",
+        "https://gemini.google.com/"
+      ]
+    },
+    {
+      "code": "70",
+      "name": "Cultura, Ciência e Atualidades",
+      "slug": "70-Cultura-Ciencia-Atualidades",
+      "googleAccount": "rodrigesadrade@gmail.com",
+      "googleAccountLabel": "Conta diversa",
+      "defaultBrandAccount": "Conteúdo diverso",
+      "extensionPack": "pessoal",
+      "startupPages": [
+        "https://www.youtube.com/",
+        "https://news.google.com/",
+        "https://gemini.google.com/"
+      ]
+    },
+    {
+      "code": "90",
+      "name": "Cofre e Serviços Sensíveis",
+      "slug": "90-Cofre-Servicos-Sensiveis",
+      "googleAccount": "",
+      "googleAccountLabel": "Sem login geral",
+      "defaultBrandAccount": "",
       "extensionPack": "cofre",
       "startupPages": [
         "https://myaccount.google.com/",

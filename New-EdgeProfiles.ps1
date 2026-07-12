@@ -2,12 +2,14 @@
 param(
     [string]$Config = ".\profiles.json",
     [string]$ExtensionPacks = ".\extension-packs.json",
+    [string]$ChannelMap = "",
 
     [switch]$DryRun,
     [switch]$Create,
     [switch]$UpdateShortcuts,
     [switch]$Backup,
     [switch]$Restore,
+    [switch]$Reports,
     [string]$BackupPath,
     [string]$RemoveProfile,
     [switch]$OpenAll,
@@ -19,7 +21,8 @@ param(
     [switch]$CloseAfterInit,
     [switch]$SkipEdgeInitialization,
     [switch]$Force,
-    [switch]$NonInteractive
+    [switch]$NonInteractive,
+    [switch]$YesToAll
 )
 
 $ErrorActionPreference = "Stop"
@@ -33,6 +36,7 @@ Import-Module (Join-Path $moduleRoot "EdgeDetection.psm1") -Force
 Import-Module (Join-Path $moduleRoot "ShortcutManager.psm1") -Force
 Import-Module (Join-Path $moduleRoot "ExtensionManager.psm1") -Force
 Import-Module (Join-Path $moduleRoot "BackupManager.psm1") -Force
+Import-Module (Join-Path $moduleRoot "ChannelMapManager.psm1") -Force
 
 function Write-ValidationAndExit {
     param([string[]]$Errors)
@@ -58,6 +62,128 @@ function Get-ConfigBoolean {
     return $Default
 }
 
+function Get-ProfileExtensionNames {
+    param(
+        $Profile,
+        $ExtensionPacksObject
+    )
+
+    return @((Get-ProfileExtensionItems -Profile $Profile -ExtensionPacks $ExtensionPacksObject) | ForEach-Object { [string]$_.name })
+}
+
+function Read-ProfileExecutionPlan {
+    param(
+        $ConfigObject,
+        $ExtensionPacksObject
+    )
+
+    $profiles = @(Get-ConfiguredProfiles -Config $ConfigObject)
+    $status = @{}
+    foreach ($profile in $profiles) {
+        $status[[string]$profile.slug] = "Y"
+    }
+
+    if ($NonInteractive -or $YesToAll) {
+        return $status
+    }
+
+    while ($true) {
+        Write-Host ""
+        Write-Host ("-" * 96) -ForegroundColor DarkGray
+        Write-Host "Plano de perfis do Edge" -ForegroundColor Cyan
+        Write-Host ("-" * 96) -ForegroundColor DarkGray
+        foreach ($profile in $profiles) {
+            $code = Get-ProfileCode -Profile $profile
+            $extensionNames = @(Get-ProfileExtensionNames -Profile $profile -ExtensionPacksObject $ExtensionPacksObject)
+            $brand = [string]$profile.defaultBrandAccount
+            if ([string]::IsNullOrWhiteSpace($brand)) {
+                $brand = "Sem canal padrao"
+            }
+
+            $line = "{0,2} [{1}] {2} | {3} | {4} ext. | {5}" -f
+                $code,
+                $status[[string]$profile.slug],
+                $profile.name,
+                $profile.googleAccountLabel,
+                $extensionNames.Count,
+                $brand
+
+            $color = "White"
+            if ($status[[string]$profile.slug] -eq "N") {
+                $color = "DarkGray"
+            }
+            elseif ($status[[string]$profile.slug] -eq "B") {
+                $color = "Red"
+            }
+
+            Write-Host $line -ForegroundColor $color
+            Write-Host ("     Extensoes: {0}" -f ($extensionNames -join ", ")) -ForegroundColor DarkGray
+        }
+
+        Write-Host ""
+        Write-Host "Enter executa Y | A tudo Y | Y 20 21 sim | N 30 pula | B 90 bloqueia | E 22 detalhes" -ForegroundColor Yellow
+        $answer = Read-Host "Comando"
+
+        if ([string]::IsNullOrWhiteSpace($answer) -or $answer -match "^[iI]$") {
+            return $status
+        }
+
+        if ($answer -match "^[aAyY]$") {
+            foreach ($profile in $profiles) {
+                $status[[string]$profile.slug] = "Y"
+            }
+            return $status
+        }
+
+        if ($answer -match "^[lL]$") {
+            foreach ($profile in $profiles) {
+                $status[[string]$profile.slug] = "N"
+            }
+            continue
+        }
+
+        $parts = @($answer -split "[,\s;]+" | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+        if ($parts.Count -eq 0) {
+            continue
+        }
+
+        $command = $parts[0].ToUpperInvariant()
+        if ($command -eq "E") {
+            foreach ($codeText in @($parts | Select-Object -Skip 1)) {
+                $match = @($profiles | Where-Object { (Get-ProfileCode -Profile $_) -ieq $codeText -or [string]$_.slug -ieq $codeText }) | Select-Object -First 1
+                if ($match) {
+                    Write-Host ""
+                    Write-Host ("{0} - {1}" -f (Get-ProfileCode -Profile $match), $match.name) -ForegroundColor Cyan
+                    foreach ($extensionName in (Get-ProfileExtensionNames -Profile $match -ExtensionPacksObject $ExtensionPacksObject)) {
+                        Write-Host (" - {0}" -f $extensionName)
+                    }
+                }
+            }
+            continue
+        }
+
+        if ($command -notin @("Y", "N", "B")) {
+            Write-Host "Comando invalido. Use Y, N, B, A ou E." -ForegroundColor Yellow
+            continue
+        }
+
+        $targets = @($parts | Select-Object -Skip 1)
+        if ($targets.Count -eq 0) {
+            foreach ($profile in $profiles) {
+                $status[[string]$profile.slug] = $command
+            }
+            continue
+        }
+
+        foreach ($target in $targets) {
+            $matches = @($profiles | Where-Object { (Get-ProfileCode -Profile $_) -ieq $target -or [string]$_.slug -ieq $target })
+            foreach ($profile in $matches) {
+                $status[[string]$profile.slug] = $command
+            }
+        }
+    }
+}
+
 function Invoke-DryRun {
     param(
         $ConfigObject,
@@ -68,7 +194,8 @@ function Invoke-DryRun {
 
     Write-Log -Level "DRYRUN" -Message "Nenhuma alteracao sera realizada."
 
-    $profiles = @($ConfigObject.profiles)
+    $profiles = @(Get-ConfiguredProfiles -Config $ConfigObject)
+    $allProfiles = @(Get-ConfiguredProfiles -Config $ConfigObject -IncludeInactive)
     $newProfiles = 0
     foreach ($profile in $profiles) {
         $profileDirectory = Get-ProfileDirectory -BaseDirectory $BaseDirectory -Profile $profile
@@ -99,7 +226,9 @@ function Invoke-DryRun {
     $packsHash = Get-FileSha256 -Path $ExtensionPacksPath
 
     Write-Host ""
-    Write-Host "Perfis configurados: $($profiles.Count)"
+    Write-Host "Perfis configurados: $($allProfiles.Count)"
+    Write-Host "Perfis ativos: $($profiles.Count)"
+    Write-Host "Perfis desativados: $($allProfiles.Count - $profiles.Count)"
     Write-Host "Perfis novos: $newProfiles"
     Write-Host "Diretorios a criar: $newProfiles"
     Write-Host "Atalhos a criar: $shortcutsToCreate"
@@ -136,6 +265,71 @@ function Invoke-ProfileInitialization {
     }
 }
 
+function Invoke-ManualBrandAccountCheck {
+    param(
+        [string]$EdgePath,
+        $Profile,
+        [string]$UserDataDir
+    )
+
+    $googleAccount = [string]$Profile.googleAccount
+    $brandAccount = [string]$Profile.defaultBrandAccount
+
+    if ([string]::IsNullOrWhiteSpace($googleAccount) -and [string]::IsNullOrWhiteSpace($brandAccount)) {
+        return
+    }
+
+    if ($NonInteractive -or $YesToAll) {
+        Write-Log -Level "INFO" -Message "Instrucao manual de conta/canal registrada para $($Profile.name): conta '$googleAccount', Brand Account '$brandAccount'."
+        return
+    }
+
+    Write-Host ""
+    Write-Host ("-" * 72) -ForegroundColor DarkGray
+    Write-Host ("Perfil criado: {0}" -f $Profile.name) -ForegroundColor Cyan
+    Write-Host ("-" * 72) -ForegroundColor DarkGray
+    if (-not [string]::IsNullOrWhiteSpace($googleAccount)) {
+        Write-Host "1. Entre manualmente na Conta Google:"
+        Write-Host ("   {0}" -f $googleAccount) -ForegroundColor Yellow
+    }
+    else {
+        Write-Host "1. Este perfil nao deve receber login geral."
+    }
+
+    Write-Host "2. Abra o YouTube."
+
+    if (-not [string]::IsNullOrWhiteSpace($brandAccount)) {
+        Write-Host "3. Selecione a Brand Account:"
+        Write-Host ("   {0}" -f $brandAccount) -ForegroundColor Yellow
+    }
+    else {
+        Write-Host "3. Mantenha sem canal padrao."
+    }
+
+    Write-Host "4. Feche o Edge."
+    Write-Host "5. Pressione ENTER para testar a persistencia."
+    Read-Host "Pronto" | Out-Null
+
+    if (Test-EdgeUserDataDirInUse -UserDataDir $UserDataDir) {
+        Write-Log -Level "WARN" -Message "O Edge ainda parece aberto para $($Profile.name); tentando fechar apenas esta instancia."
+        Stop-EdgeProcessesForUserDataDir -UserDataDir $UserDataDir
+    }
+
+    Start-EdgeProfile -EdgePath $EdgePath -UserDataDir $UserDataDir -Urls @("https://www.youtube.com/") -NoFirstRun -NewWindow | Out-Null
+    Write-Host ""
+    Write-Host "O YouTube abriu na Brand Account correta?" -ForegroundColor Cyan
+    Write-Host "[S] Sim"
+    Write-Host "[N] Nao"
+    $answer = Read-Host "Confirmacao"
+
+    if ($answer -match "^[sSyY]") {
+        Write-Log -Level "OK" -Message "Persistencia confirmada manualmente para $($Profile.name)."
+    }
+    else {
+        Write-Log -Level "WARN" -Message "Persistencia nao confirmada para $($Profile.name). Revise login/Brand Account manualmente."
+    }
+}
+
 function Test-EdgeProfileInitializedDirectory {
     param(
         [Parameter(Mandatory = $true)]
@@ -154,7 +348,7 @@ function Get-ExistingFactoryArtifacts {
     )
 
     $profileDirectories = New-Object System.Collections.Generic.List[object]
-    foreach ($profile in @($ConfigObject.profiles)) {
+    foreach ($profile in (Get-ConfiguredProfiles -Config $ConfigObject)) {
         $profileDirectory = Get-ProfileDirectory -BaseDirectory $BaseDirectory -Profile $profile
         if (Test-Path -LiteralPath $profileDirectory -PathType Container) {
             $profileDirectories.Add([pscustomobject]@{
@@ -184,8 +378,8 @@ function Read-RecoveryMode {
         return "Fresh"
     }
 
-    if ($NonInteractive -or $Force) {
-        Write-Log -Level "INFO" -Message "Artefatos existentes detectados; continuando automaticamente por -NonInteractive/-Force."
+    if ($NonInteractive -or $Force -or $YesToAll) {
+        Write-Log -Level "INFO" -Message "Artefatos existentes detectados; continuando automaticamente por -NonInteractive/-Force/-YesToAll."
         return "Continue"
     }
 
@@ -224,7 +418,7 @@ function Remove-ConfiguredProfileDirectories {
         [string]$BaseDirectory
     )
 
-    foreach ($profile in @($ConfigObject.profiles)) {
+    foreach ($profile in (Get-ConfiguredProfiles -Config $ConfigObject)) {
         $profileDirectory = Get-ProfileDirectory -BaseDirectory $BaseDirectory -Profile $profile
         if (-not (Test-Path -LiteralPath $profileDirectory -PathType Container)) {
             continue
@@ -239,7 +433,7 @@ function Remove-ConfiguredProfileDirectories {
         }
     }
 
-    foreach ($profile in @($ConfigObject.profiles)) {
+    foreach ($profile in (Get-ConfiguredProfiles -Config $ConfigObject)) {
         $profileDirectory = Get-ProfileDirectory -BaseDirectory $BaseDirectory -Profile $profile
         if (Test-Path -LiteralPath $profileDirectory -PathType Container) {
             Remove-Item -LiteralPath $profileDirectory -Recurse -Force
@@ -327,6 +521,8 @@ function Invoke-CreateProfiles {
         return
     }
 
+    $executionPlan = Read-ProfileExecutionPlan -ConfigObject $ConfigObject -ExtensionPacksObject $ExtensionPacksObject
+
     $edge = Find-EdgeExecutable -PromptIfMissing -NonInteractive:$NonInteractive
 
     if (Test-AnyEdgeRunning) {
@@ -338,10 +534,25 @@ function Invoke-CreateProfiles {
     if ($ExtensionMode -eq "Enterprise") {
         $policyBackupDir = Join-Path (Join-Path $BaseDirectory "Logs") "RegistryBackups"
         $policyStatePath = Join-Path (Join-Path $BaseDirectory "Logs") "enterprise-extension-policy-state.json"
-        Set-EnterpriseExtensionPolicies -Profiles @($ConfigObject.profiles) -ExtensionPacks $ExtensionPacksObject -PolicyBackupDirectory $policyBackupDir -PolicyStatePath $policyStatePath -Force:$Force
+        Set-EnterpriseExtensionPolicies -Profiles (Get-ConfiguredProfiles -Config $ConfigObject) -ExtensionPacks $ExtensionPacksObject -PolicyBackupDirectory $policyBackupDir -PolicyStatePath $policyStatePath -Force:$Force
     }
 
-    foreach ($profile in @($ConfigObject.profiles)) {
+    foreach ($profile in (Get-ConfiguredProfiles -Config $ConfigObject)) {
+        $plannedStatus = "Y"
+        if ($executionPlan.ContainsKey([string]$profile.slug)) {
+            $plannedStatus = $executionPlan[[string]$profile.slug]
+        }
+
+        if ($plannedStatus -eq "N") {
+            Write-Log -Level "INFO" -Message "Perfil pulado pelo plano desta execucao: $($profile.slug)"
+            continue
+        }
+
+        if ($plannedStatus -eq "B") {
+            Write-Log -Level "WARN" -Message "Perfil bloqueado pelo plano desta execucao: $($profile.slug)"
+            continue
+        }
+
         $profileDirectory = Get-ProfileDirectory -BaseDirectory $BaseDirectory -Profile $profile
         $shouldInitialize = $false
         $shouldUpdateShortcut = $true
@@ -351,13 +562,13 @@ function Invoke-CreateProfiles {
             Write-Host ""
             Write-Host "[EXISTENTE] $($profile.name)" -ForegroundColor Yellow
 
-            if ($recoveryMode -eq "Continue" -or $NonInteractive -or $Force) {
+            if ($recoveryMode -eq "Continue" -or $NonInteractive -or $Force -or $YesToAll) {
                 Write-Log -Level "INFO" -Message "Continuando execucao: mantendo diretorio e atualizando atalho de $($profile.slug)."
                 if (-not (Test-EdgeProfileInitializedDirectory -UserDataDir $profileDirectory)) {
                     Write-Log -Level "WARN" -Message "Diretorio existe, mas parece incompleto; inicializando novamente: $($profile.slug)"
                     $shouldInitialize = $true
                 }
-                $shouldInstallExtensions = $shouldInitialize -and ($ExtensionMode -eq "Assisted")
+                $shouldInstallExtensions = ($ExtensionMode -eq "Assisted")
             }
             else {
                 Write-Host "1. Manter"
@@ -410,10 +621,11 @@ function Invoke-CreateProfiles {
 
         if ($shouldInitialize) {
             Invoke-ProfileInitialization -EdgePath $edge.Path -Profile $profile -UserDataDir $profileDirectory
+            Invoke-ManualBrandAccountCheck -EdgePath $edge.Path -Profile $profile -UserDataDir $profileDirectory
         }
 
         if ($shouldInstallExtensions) {
-            Invoke-AssistedExtensionInstall -EdgePath $edge.Path -Profile $profile -UserDataDir $profileDirectory -ExtensionPacks $ExtensionPacksObject -NonInteractive:$NonInteractive
+            Invoke-AssistedExtensionInstall -EdgePath $edge.Path -Profile $profile -UserDataDir $profileDirectory -ExtensionPacks $ExtensionPacksObject -NonInteractive:$NonInteractive -YesToAll:$YesToAll
         }
     }
 }
@@ -430,6 +642,22 @@ if ($configObject.PSObject.Properties.Name -contains "backupDirectory" -and -not
     $backupDirectory = [string]$configObject.backupDirectory
 }
 $backupDirectory = Resolve-FactoryPath -Path $backupDirectory -BasePath $configDirectory
+
+$reportsDirectory = ".\Reports"
+if ($configObject.PSObject.Properties.Name -contains "reportsDirectory" -and -not [string]::IsNullOrWhiteSpace([string]$configObject.reportsDirectory)) {
+    $reportsDirectory = [string]$configObject.reportsDirectory
+}
+$reportsDirectory = Resolve-FactoryPath -Path $reportsDirectory -BasePath $configDirectory
+
+if ([string]::IsNullOrWhiteSpace($ChannelMap)) {
+    if ($configObject.PSObject.Properties.Name -contains "channelMap" -and -not [string]::IsNullOrWhiteSpace([string]$configObject.channelMap)) {
+        $ChannelMap = [string]$configObject.channelMap
+    }
+    else {
+        $ChannelMap = ".\channel-map.csv"
+    }
+}
+$channelMapPath = Resolve-FactoryPath -Path $ChannelMap -BasePath $configDirectory
 
 Assert-SafeBaseDirectory -BaseDirectory $baseDirectory
 
@@ -448,8 +676,25 @@ if ($profileErrors.Count -gt 0) {
     Write-ValidationAndExit -Errors $profileErrors
 }
 
+if (Test-Path -LiteralPath $channelMapPath -PathType Leaf) {
+    $channelRows = @(Read-ChannelMap -Path $channelMapPath)
+    $channelErrors = @(Get-ChannelMapValidationErrors -Rows $channelRows -Config $configObject)
+    if ($channelErrors.Count -gt 0) {
+        Write-ValidationAndExit -Errors $channelErrors
+    }
+}
+
 if ($DryRun) {
     Invoke-DryRun -ConfigObject $configObject -BaseDirectory $baseDirectory -ConfigPath $configPath -ExtensionPacksPath $extensionPacksPath
+    return
+}
+
+if ($Reports) {
+    $reportResult = New-ChannelReports -ChannelMapPath $channelMapPath -ReportsDirectory $reportsDirectory -Config $configObject -BaseDirectory $baseDirectory
+    if (-not $reportResult.Success) {
+        Write-ValidationAndExit -Errors $reportResult.Errors
+    }
+    Write-ChannelDuplicateSummary -DuplicateChannelsPath $reportResult.DuplicateChannelsPath
     return
 }
 
@@ -488,7 +733,7 @@ if ($UpdateShortcuts) {
 
 if ($OpenAll) {
     $edge = Find-EdgeExecutable -PromptIfMissing -NonInteractive:$NonInteractive
-    foreach ($profile in @($configObject.profiles)) {
+    foreach ($profile in (Get-ConfiguredProfiles -Config $configObject)) {
         $profileDirectory = Get-ProfileDirectory -BaseDirectory $baseDirectory -Profile $profile
         if (-not (Test-Path -LiteralPath $profileDirectory -PathType Container)) {
             Write-Log -Level "WARN" -Message "Perfil ainda nao existe; ignorando OpenAll: $($profile.slug)"

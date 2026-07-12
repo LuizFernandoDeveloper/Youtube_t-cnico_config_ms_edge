@@ -37,7 +37,7 @@ function Get-ShortcutPlan {
 
     $startMenu = Join-Path (Join-Path $env:APPDATA "Microsoft\Windows\Start Menu\Programs") $startMenuFolder
 
-    foreach ($profile in @($Config.profiles)) {
+    foreach ($profile in (Get-ConfiguredProfiles -Config $Config)) {
         $fileName = "Microsoft Edge - {0}.lnk" -f (Get-SafeShortcutFileName -Name ([string]$profile.name))
         $userDataDir = Get-ProfileDirectory -BaseDirectory $BaseDirectory -Profile $profile
 

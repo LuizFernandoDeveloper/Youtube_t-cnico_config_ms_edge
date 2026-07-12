@@ -1,11 +1,11 @@
 {
   "packs": {
-    "youtube-tecnico": {
-      "description": "Extensoes recomendadas para perfis de YouTube tecnico.",
+    "administracao": {
+      "description": "Extensoes minimas para administracao de contas e canais.",
       "extensions": [
         {
-          "name": "Adblock Plus",
-          "url": "https://microsoftedge.microsoft.com/addons/search/Adblock%20Plus",
+          "name": "Kaspersky Password Manager",
+          "url": "https://microsoftedge.microsoft.com/addons/search/Kaspersky%20Password%20Manager",
           "id": "",
           "updateUrl": ""
         },
@@ -14,23 +14,11 @@
           "url": "https://microsoftedge.microsoft.com/addons/search/OneNote%20Web%20Clipper",
           "id": "",
           "updateUrl": ""
-        },
-        {
-          "name": "Captura de tela",
-          "url": "https://microsoftedge.microsoft.com/addons/search/Captura%20de%20tela",
-          "id": "",
-          "updateUrl": ""
-        },
-        {
-          "name": "Kaspersky Password Manager",
-          "url": "https://microsoftedge.microsoft.com/addons/search/Kaspersky%20Password%20Manager",
-          "id": "",
-          "updateUrl": ""
         }
       ]
     },
     "pesquisa": {
-      "description": "Extensoes para pesquisa academica, PDFs e anotacoes.",
+      "description": "Extensoes para pesquisa academica, PDFs, NotebookLM e anotacoes.",
       "extensions": [
         {
           "name": "Zotero Connector",
@@ -57,6 +45,99 @@
           "updateUrl": ""
         },
         {
+          "name": "Google Docs off-line",
+          "url": "https://microsoftedge.microsoft.com/addons/search/Google%20Docs%20Offline",
+          "id": "",
+          "updateUrl": ""
+        },
+        {
+          "name": "OneNote Web Clipper",
+          "url": "https://microsoftedge.microsoft.com/addons/search/OneNote%20Web%20Clipper",
+          "id": "",
+          "updateUrl": ""
+        },
+        {
+          "name": "Kaspersky Password Manager",
+          "url": "https://microsoftedge.microsoft.com/addons/search/Kaspersky%20Password%20Manager",
+          "id": "",
+          "updateUrl": ""
+        }
+      ]
+    },
+    "academico": {
+      "description": "Extensoes para estudos, idiomas, revisao e pesquisa basica.",
+      "extensions": [
+        {
+          "name": "Adblock Plus",
+          "url": "https://microsoftedge.microsoft.com/addons/search/Adblock%20Plus",
+          "id": "",
+          "updateUrl": ""
+        },
+        {
+          "name": "Google Docs off-line",
+          "url": "https://microsoftedge.microsoft.com/addons/search/Google%20Docs%20Offline",
+          "id": "",
+          "updateUrl": ""
+        },
+        {
+          "name": "OneNote Web Clipper",
+          "url": "https://microsoftedge.microsoft.com/addons/search/OneNote%20Web%20Clipper",
+          "id": "",
+          "updateUrl": ""
+        },
+        {
+          "name": "Kaspersky Password Manager",
+          "url": "https://microsoftedge.microsoft.com/addons/search/Kaspersky%20Password%20Manager",
+          "id": "",
+          "updateUrl": ""
+        }
+      ]
+    },
+    "engenharia": {
+      "description": "Extensoes para engenharia, automacao, manufatura e pesquisa tecnica.",
+      "extensions": [
+        {
+          "name": "Adblock Plus",
+          "url": "https://microsoftedge.microsoft.com/addons/search/Adblock%20Plus",
+          "id": "",
+          "updateUrl": ""
+        },
+        {
+          "name": "OneNote Web Clipper",
+          "url": "https://microsoftedge.microsoft.com/addons/search/OneNote%20Web%20Clipper",
+          "id": "",
+          "updateUrl": ""
+        },
+        {
+          "name": "Captura de tela",
+          "url": "https://microsoftedge.microsoft.com/addons/search/Captura%20de%20tela",
+          "id": "",
+          "updateUrl": ""
+        },
+        {
+          "name": "Google Docs off-line",
+          "url": "https://microsoftedge.microsoft.com/addons/search/Google%20Docs%20Offline",
+          "id": "",
+          "updateUrl": ""
+        },
+        {
+          "name": "Kaspersky Password Manager",
+          "url": "https://microsoftedge.microsoft.com/addons/search/Kaspersky%20Password%20Manager",
+          "id": "",
+          "updateUrl": ""
+        }
+      ]
+    },
+    "software": {
+      "description": "Extensoes para software, sistemas embarcados, redes, cyber e IA.",
+      "extensions": [
+        {
+          "name": "Adblock Plus",
+          "url": "https://microsoftedge.microsoft.com/addons/search/Adblock%20Plus",
+          "id": "",
+          "updateUrl": ""
+        },
+        {
           "name": "OneNote Web Clipper",
           "url": "https://microsoftedge.microsoft.com/addons/search/OneNote%20Web%20Clipper",
           "id": "",
@@ -76,18 +157,58 @@
         }
       ]
     },
-    "notebooklm": {
-      "description": "Extensoes para NotebookLM, fontes em PDF e escrita assistida.",
+    "tecnologia": {
+      "description": "Extensoes para hardware, tecnologia, podcasts tecnicos e noticias.",
       "extensions": [
         {
-          "name": "NotebookLM PDF Downloader",
-          "url": "https://microsoftedge.microsoft.com/addons/search/NotebookLM%20PDF%20Downloader",
+          "name": "Adblock Plus",
+          "url": "https://microsoftedge.microsoft.com/addons/search/Adblock%20Plus",
           "id": "",
           "updateUrl": ""
         },
         {
-          "name": "Google Docs off-line",
-          "url": "https://microsoftedge.microsoft.com/addons/search/Google%20Docs%20Offline",
+          "name": "OneNote Web Clipper",
+          "url": "https://microsoftedge.microsoft.com/addons/search/OneNote%20Web%20Clipper",
+          "id": "",
+          "updateUrl": ""
+        },
+        {
+          "name": "Kaspersky Password Manager",
+          "url": "https://microsoftedge.microsoft.com/addons/search/Kaspersky%20Password%20Manager",
+          "id": "",
+          "updateUrl": ""
+        }
+      ]
+    },
+    "negocios": {
+      "description": "Extensoes para mercado, negocios, finanças e agro.",
+      "extensions": [
+        {
+          "name": "Adblock Plus",
+          "url": "https://microsoftedge.microsoft.com/addons/search/Adblock%20Plus",
+          "id": "",
+          "updateUrl": ""
+        },
+        {
+          "name": "OneNote Web Clipper",
+          "url": "https://microsoftedge.microsoft.com/addons/search/OneNote%20Web%20Clipper",
+          "id": "",
+          "updateUrl": ""
+        },
+        {
+          "name": "Kaspersky Password Manager",
+          "url": "https://microsoftedge.microsoft.com/addons/search/Kaspersky%20Password%20Manager",
+          "id": "",
+          "updateUrl": ""
+        }
+      ]
+    },
+    "saude": {
+      "description": "Extensoes para saude, performance, comportamento e estudos pessoais.",
+      "extensions": [
+        {
+          "name": "Adblock Plus",
+          "url": "https://microsoftedge.microsoft.com/addons/search/Adblock%20Plus",
           "id": "",
           "updateUrl": ""
         },
@@ -106,7 +227,7 @@
       ]
     },
     "pessoal": {
-      "description": "Extensoes para uso pessoal e entretenimento.",
+      "description": "Extensoes para perfis de consumo diversificado.",
       "extensions": [
         {
           "name": "Adblock Plus",
