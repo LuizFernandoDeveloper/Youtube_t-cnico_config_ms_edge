@@ -11,6 +11,7 @@ param(
     [switch]$Restore,
     [switch]$Reports,
     [switch]$SecurityCheck,
+    [switch]$InspectNativeProfiles,
     [string]$BackupPath,
     [string]$RemoveProfile,
     [switch]$OpenAll,
@@ -45,6 +46,7 @@ Import-Module (Join-Path $moduleRoot "ExtensionManager.psm1") -Force
 Import-Module (Join-Path $moduleRoot "BackupManager.psm1") -Force
 Import-Module (Join-Path $moduleRoot "ChannelMapManager.psm1") -Force
 Import-Module (Join-Path $moduleRoot "SecurityAssistant.psm1") -Force
+Import-Module (Join-Path $moduleRoot "NativeEdgeProfileInspector.psm1") -Force
 
 if ($FullAuto) {
     $YesToAll = $true
@@ -279,7 +281,7 @@ function Invoke-ProfileInitialization {
     Wait-EdgeProfileInitialized -UserDataDir $UserDataDir -TimeoutSeconds 45 | Out-Null
 
     if ($CloseAfterInit) {
-        Stop-EdgeProcessesForUserDataDir -UserDataDir $UserDataDir
+        Stop-EdgeProcessesForUserDataDir -UserDataDir $UserDataDir | Out-Null
     }
 }
 
@@ -337,7 +339,7 @@ function Invoke-ManualBrandAccountCheck {
 
     if (Test-EdgeUserDataDirInUse -UserDataDir $UserDataDir) {
         Write-Log -Level "WARN" -Message "O Edge ainda parece aberto para $($Profile.name); tentando fechar apenas esta instancia."
-        Stop-EdgeProcessesForUserDataDir -UserDataDir $UserDataDir
+        Stop-EdgeProcessesForUserDataDir -UserDataDir $UserDataDir | Out-Null
     }
 
     Start-EdgeProfile -EdgePath $EdgePath -UserDataDir $UserDataDir -Urls @("https://www.youtube.com/") -NoFirstRun -NewWindow | Out-Null
@@ -562,6 +564,8 @@ function Invoke-CreateProfiles {
         Set-EnterpriseExtensionPolicies -Profiles (Get-ConfiguredProfiles -Config $ConfigObject) -ExtensionPacks $ExtensionPacksObject -PolicyBackupDirectory $policyBackupDir -PolicyStatePath $policyStatePath -Force:$Force
     }
 
+    $extensionQueue = New-Object System.Collections.Generic.List[object]
+
     foreach ($profile in (Get-ConfiguredProfiles -Config $ConfigObject)) {
         $plannedStatus = "Y"
         if ($executionPlan.ContainsKey([string]$profile.slug)) {
@@ -644,15 +648,20 @@ function Invoke-CreateProfiles {
             New-EdgeProfileShortcuts -Config $ConfigObject -BaseDirectory $BaseDirectory -EdgePath $edge.Path -OnlySlug ([string]$profile.slug) | Out-Null
         }
 
-        if ($shouldInitialize) {
-            Invoke-ProfileInitialization -EdgePath $edge.Path -Profile $profile -UserDataDir $profileDirectory
-        }
-
         if ($shouldUpdateShortcut -or $shouldInitialize -or $ApplyBaseConfig) {
             if (Test-EdgeUserDataDirInUse -UserDataDir $profileDirectory) {
-                Stop-EdgeProcessesForUserDataDir -UserDataDir $profileDirectory
+                $closedForConfig = Stop-EdgeProcessesForUserDataDir -UserDataDir $profileDirectory
+                if (-not $closedForConfig) {
+                    Write-Log -Level "WARN" -Message "Nome/foto/configuracao segura adiados porque o perfil ainda esta aberto: $($profile.slug)"
+                    $shouldInstallExtensions = $false
+                    continue
+                }
             }
             Set-ProfileAccountConfiguration -Config $ConfigObject -BaseDirectory $BaseDirectory -Profile $profile -BaselineSourceSlug $BaseProfileSlug -ApplyBaseConfig:$ApplyBaseConfig
+        }
+
+        if ($shouldInitialize) {
+            Invoke-ProfileInitialization -EdgePath $edge.Path -Profile $profile -UserDataDir $profileDirectory
         }
 
         if ($shouldInitialize) {
@@ -660,7 +669,17 @@ function Invoke-CreateProfiles {
         }
 
         if ($shouldInstallExtensions) {
-            Invoke-AssistedExtensionInstall -EdgePath $edge.Path -Profile $profile -UserDataDir $profileDirectory -ExtensionPacks $ExtensionPacksObject -NonInteractive:$NonInteractive -YesToAll:($YesToAll -or $script:AutoApprovedAll)
+            $extensionQueue.Add([pscustomobject]@{
+                Profile = $profile
+                UserDataDir = $profileDirectory
+            })
+        }
+    }
+
+    if ($ExtensionMode -eq "Assisted" -and $extensionQueue.Count -gt 0) {
+        Write-Log -Level "INFO" -Message "Abrindo paginas de extensoes na fase final para evitar conflito com configuracao dos perfis."
+        foreach ($item in $extensionQueue) {
+            Invoke-AssistedExtensionInstall -EdgePath $edge.Path -Profile $item.Profile -UserDataDir $item.UserDataDir -ExtensionPacks $ExtensionPacksObject -NonInteractive:$NonInteractive -YesToAll:($YesToAll -or $script:AutoApprovedAll)
         }
     }
 }
@@ -729,6 +748,12 @@ if (Test-Path -LiteralPath $channelMapPath -PathType Leaf) {
 if ($SecurityCheck) {
     $securityStatus = Get-KasperskySecurityStatus
     Write-KasperskySecurityStatus -Status $securityStatus
+    return
+}
+
+if ($InspectNativeProfiles) {
+    $nativeProfiles = @(Get-NativeEdgeProfiles)
+    Write-NativeEdgeProfileReport -Profiles $nativeProfiles
     return
 }
 

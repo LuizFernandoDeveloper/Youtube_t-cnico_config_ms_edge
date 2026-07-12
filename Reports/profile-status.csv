@@ -1,7 +1,7 @@
 ﻿"Codigo","Nome","Slug","Ativo","ContaGoogle","ContaRotulo","BrandAccountPadrao","PacoteExtensoes","DiretorioExiste","Inicializado","Diretorio"
 "00","Administração Google","00-Administracao-Google","True","andradeluizfernandorodrigues@gmail.com","Conta matriz","Luiz Fernando Rodrigues","administracao","True","True","C:\EdgeProfiles\00-Administracao-Google"
 "01","Pesquisa e Referências","01-Pesquisa-Referencias","True","andradeluizfernandorodrigues@gmail.com","Conta matriz","","pesquisa","True","True","C:\EdgeProfiles\01-Pesquisa-Referencias"
-"10","Base Acadêmica","10-Base-Academica","True","luiz.educacao.baseacademica@gmail.com","Conta acadêmica","Base Acadêmica","academico","False","False","C:\EdgeProfiles\10-Base-Academica"
+"10","Base Acadêmica","10-Base-Academica","True","luiz.educacao.baseacademica@gmail.com","Conta acadêmica","Base Acadêmica","academico","True","True","C:\EdgeProfiles\10-Base-Academica"
 "20","Engenharia Elétrica, Eletrônica e Automação","20-Engenharia-Eletrica-Automacao","True","luiz.educacao.base.engenharia@gmail.com","Conta engenharia","Engenharia Elétrica","engenharia","False","False","C:\EdgeProfiles\20-Engenharia-Eletrica-Automacao"
 "21","Engenharia Mecânica, Manufatura e Metrologia","21-Engenharia-Mecanica-Manufatura-Metrologia","True","luiz.educacao.base.engenharia@gmail.com","Conta engenharia","Engenharia Mecânica","engenharia","False","False","C:\EdgeProfiles\21-Engenharia-Mecanica-Manufatura-Metrologia"
 "22","Software, Embarcados, Redes e Cyber","22-Software-Embarcados-Redes-Cyber","True","luiz.educacao.base.engenharia@gmail.com","Conta engenharia","Dev & Software","software","False","False","C:\EdgeProfiles\22-Software-Embarcados-Redes-Cyber"

@@ -99,7 +99,7 @@ function Stop-EdgeProcessesForUserDataDir {
         [Parameter(Mandatory = $true)]
         [string]$UserDataDir,
 
-        [int]$TimeoutSeconds = 10
+        [int]$TimeoutSeconds = 30
     )
 
     $processes = @(Get-EdgeProcessesForUserDataDir -UserDataDir $UserDataDir)
@@ -117,8 +117,27 @@ function Stop-EdgeProcessesForUserDataDir {
     }
 
     if (Test-EdgeUserDataDirInUse -UserDataDir $UserDataDir) {
-        Write-FactoryLog -Level "WARN" -Message "Ainda ha processos do Edge usando $UserDataDir."
+        $remaining = @(Get-EdgeProcessesForUserDataDir -UserDataDir $UserDataDir)
+        foreach ($process in $remaining) {
+            Write-FactoryLog -Level "WARN" -Message "Forcando fechamento do Edge para $UserDataDir (PID $($process.ProcessId))."
+            Stop-Process -Id $process.ProcessId -Force -ErrorAction SilentlyContinue
+        }
+
+        $deadline = (Get-Date).AddSeconds([Math]::Max(5, [Math]::Min(15, $TimeoutSeconds)))
+        while ((Get-Date) -lt $deadline) {
+            if (-not (Test-EdgeUserDataDirInUse -UserDataDir $UserDataDir)) {
+                return $true
+            }
+            Start-Sleep -Milliseconds 300
+        }
     }
+
+    if (Test-EdgeUserDataDirInUse -UserDataDir $UserDataDir) {
+        Write-FactoryLog -Level "WARN" -Message "Ainda ha processos do Edge usando $UserDataDir."
+        return $false
+    }
+
+    return $true
 }
 
 function Test-AnyEdgeRunning {
@@ -146,6 +165,8 @@ function Start-EdgeProfile {
 
     $arguments = New-Object System.Collections.Generic.List[string]
     $arguments.Add(("--user-data-dir=""{0}""" -f $UserDataDir))
+    $arguments.Add("--disable-background-mode")
+    $arguments.Add("--no-default-browser-check")
 
     if ($NoFirstRun) {
         $arguments.Add("--no-first-run")

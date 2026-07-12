@@ -12,6 +12,7 @@ Projeto PowerShell para criar ambientes isolados do Microsoft Edge usando `--use
 .\New-EdgeProfiles.ps1 -Create -ApplyBaseConfig
 .\New-EdgeProfiles.ps1 -Reports
 .\New-EdgeProfiles.ps1 -SecurityCheck
+.\New-EdgeProfiles.ps1 -InspectNativeProfiles
 .\New-EdgeProfiles.ps1 -UpdateShortcuts
 .\New-EdgeProfiles.ps1 -Backup
 .\New-EdgeProfiles.ps1 -Restore -BackupPath ".\Backups\2026-07-12_173000"
@@ -23,6 +24,10 @@ Projeto PowerShell para criar ambientes isolados do Microsoft Edge usando `--use
 Por padrao, os perfis sao definidos em `profiles.json`, os pacotes de extensoes em `extension-packs.json` e o plano de canais em `channel-map.csv`.
 
 Importante: estes perfis sao ambientes isolados por `--user-data-dir`. Eles abrem pelos atalhos criados e nao aparecem como varias contas no seletor interno do Edge padrao.
+
+Limite real da automacao: o script nao cria Contas Google, Brand Accounts nem perfis nativos dentro do seletor interno do Edge. A abordagem documentada e confiavel aqui e criar ambientes isolados por pasta de dados e atalhos. Login, escolha de Brand Account e instalacao final das extensoes continuam dependendo de acao manual no navegador.
+
+Use `-InspectNativeProfiles` para listar os perfis que aparecem no seletor interno do Edge, como `Perfil 1`, `Perfil 3` e `Pessoal 2`. Esse modo e somente leitura.
 
 Quando o script detecta perfis ou atalhos criados em uma execucao anterior, ele mostra uma tela de recuperacao antes de continuar:
 
@@ -44,6 +49,18 @@ Na tela de plano, digitar apenas `Y` tambem vira "sim para tudo": aprova todos o
 `-ApplyBaseConfig` copia configuracoes seguras do perfil base `00-Administracao-Google` para os demais perfis, sem copiar cookies, senhas, tokens, contas logadas, banco de dados ou dados internos do Kaspersky. Ele tambem aplica nome correto, metadata e icone/foto de conta aos perfis.
 
 `-FullAuto` equivale a criacao automatica com `-YesToAll` e `-ApplyBaseConfig`.
+
+Para uma primeira execucao mais estavel, crie/configure os ambientes sem abrir paginas de extensao:
+
+```powershell
+.\New-EdgeProfiles.ps1 -Create -FullAuto -ExtensionMode None
+```
+
+Depois, abra as paginas de extensoes recomendadas em uma fase separada:
+
+```powershell
+.\New-EdgeProfiles.ps1 -Create -YesToAll
+```
 
 `-SecurityCheck` faz uma checagem segura do Kaspersky: detecta processos/produtos como antivirus, VPN e Password Manager, mas nao le senhas, tokens, cookies, cofres ou dados internos da extensao. Durante o login manual, use o Kaspersky Password Manager voce mesmo para preencher as credenciais no Edge.
 

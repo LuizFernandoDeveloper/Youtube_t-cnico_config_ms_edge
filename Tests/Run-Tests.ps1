@@ -35,6 +35,7 @@ Import-Module (Join-Path $moduleRoot "AccountBrandingManager.psm1") -Force
 Import-Module (Join-Path $moduleRoot "ShortcutManager.psm1") -Force
 Import-Module (Join-Path $moduleRoot "ChannelMapManager.psm1") -Force
 Import-Module (Join-Path $moduleRoot "SecurityAssistant.psm1") -Force
+Import-Module (Join-Path $moduleRoot "NativeEdgeProfileInspector.psm1") -Force
 
 $psFiles = @(Get-ChildItem -Path $root -Recurse -Include *.ps1, *.psm1)
 foreach ($file in $psFiles) {
@@ -43,6 +44,17 @@ foreach ($file in $psFiles) {
     [System.Management.Automation.Language.Parser]::ParseFile($file.FullName, [ref]$tokens, [ref]$errors) | Out-Null
     Assert-Equal 0 $errors.Count "Sintaxe PowerShell invalida em $($file.FullName)"
 }
+
+$mainScript = Get-Content -LiteralPath (Join-Path $root "New-EdgeProfiles.ps1") -Raw -Encoding UTF8
+$configCallIndex = $mainScript.IndexOf("Set-ProfileAccountConfiguration -Config", [System.StringComparison]::Ordinal)
+$initCallIndex = $mainScript.IndexOf("Invoke-ProfileInitialization -EdgePath", [System.StringComparison]::Ordinal)
+Assert-True ($configCallIndex -ge 0) "Script principal deve aplicar branding/configuracao"
+Assert-True ($initCallIndex -ge 0) "Script principal deve inicializar perfis"
+Assert-True ($configCallIndex -lt $initCallIndex) "Branding/configuracao deve acontecer antes da inicializacao do Edge"
+
+$edgeDetectionScript = Get-Content -LiteralPath (Join-Path $moduleRoot "EdgeDetection.psm1") -Raw -Encoding UTF8
+Assert-True ($edgeDetectionScript.Contains("--disable-background-mode")) "Inicializacao do Edge deve desabilitar background mode"
+Assert-True ($edgeDetectionScript.Contains("Stop-Process -Id `$process.ProcessId -Force")) "Fechamento do Edge deve ter fallback forcado"
 
 $configPath = Join-Path $root "profiles.json"
 $packsPath = Join-Path $root "extension-packs.json"
@@ -168,6 +180,11 @@ $securityStatus = Get-KasperskySecurityStatus
 Assert-True ($null -ne $securityStatus) "Checagem segura do Kaspersky deve retornar status"
 Assert-True ($securityStatus.PSObject.Properties.Name -contains "PasswordManagerRunning") "Status deve informar PasswordManagerRunning"
 Assert-True ($securityStatus.PSObject.Properties.Name -contains "Processes") "Status deve informar Processes"
+
+$nativeUserDataDir = Get-NativeEdgeUserDataDir
+Assert-True (-not [string]::IsNullOrWhiteSpace($nativeUserDataDir)) "Diretorio nativo do Edge deve ser resolvido"
+$nativeProfiles = @(Get-NativeEdgeProfiles)
+Assert-True ($null -ne $nativeProfiles) "Inspecao de perfis nativos deve retornar uma lista"
 
 $testReports = Join-Path ([System.IO.Path]::GetTempPath()) ("EdgeProfileFactoryReportsTest_{0}" -f ([Guid]::NewGuid().ToString("N")))
 $reportResult = New-ChannelReports -ChannelMapPath $channelMapPath -ReportsDirectory $testReports -Config $config -BaseDirectory $baseDirectory
