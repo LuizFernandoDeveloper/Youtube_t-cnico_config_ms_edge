@@ -912,13 +912,27 @@ if ($ShowBrowserPolicy) {
 }
 
 if ($UndoHollowBrowserPolicy) {
-    $policyStatus = Restore-EdgeHollowBrowserPolicies -StatePath $browserPolicyStatePath
+    try {
+        $policyStatus = Restore-EdgeHollowBrowserPolicies -StatePath $browserPolicyStatePath
+    }
+    catch {
+        Write-Log -Level "ERROR" -Message "Nao foi possivel desfazer a politica de perfil oco: $($_.Exception.Message)"
+        Write-Log -Level "ERROR" -Message "Rode o PowerShell como Administrador e execute: .\New-EdgeProfiles.ps1 -UndoHollowBrowserPolicy"
+        throw
+    }
+
     Write-EdgeBrowserPolicyStatus -Status $policyStatus
     Write-Log -Level "WARN" -Message "Politica de perfil oco desfeita. Feche e abra o Edge para o efeito mudar."
     return
 }
 
 if ($ApplyHollowBrowserPolicy) {
+    if (-not $Force) {
+        Write-Log -Level "ERROR" -Message "Esta politica e GLOBAL para o Edge do usuario e remove login/sync tambem da conta principal."
+        Write-Log -Level "ERROR" -Message "Se voce quer manter o e-mail na conta principal, NAO use este modo. Para aplicar mesmo assim, use -ApplyHollowBrowserPolicy -Force."
+        throw "Confirmacao obrigatoria ausente: use -Force somente se aceitar politica global do Edge."
+    }
+
     try {
         $policyStatus = Set-EdgeHollowBrowserPolicies -StatePath $browserPolicyStatePath
     }

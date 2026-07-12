@@ -42,7 +42,7 @@ Use `-SanitizeFactoryProfiles -NoBrowser` para limpar esse estado de login/sync 
 
 Por padrao, ao aplicar nome/foto/metadados, o script tambem deixa o perfil do navegador "oco": sem e-mail do Edge, sem sync do Edge e sem conta Microsoft/Windows gravada no card do perfil.
 
-Limite importante: o Edge pode recolocar a conta Microsoft/Windows quando o navegador abre. Para garantir perfil de navegador oco de verdade, use `-ApplyHollowBrowserPolicy` em um PowerShell aberto como Administrador. Isso aplica politicas do Edge no usuario atual: `BrowserSignin=0`, `SyncDisabled=1` e `HideFirstRunExperience=1`. O efeito e global para o Microsoft Edge desse usuario e pode mostrar o navegador como gerenciado. Use `-UndoHollowBrowserPolicy` para restaurar os valores anteriores salvos.
+Limite importante: o Edge pode recolocar a conta Microsoft/Windows quando o navegador abre. A politica que impede isso (`BrowserSignin=0`, `SyncDisabled=1` e `HideFirstRunExperience=1`) e GLOBAL para o Microsoft Edge desse usuario: ela tambem remove/bloqueia login e sync da conta principal do Edge. Se voce quer manter a conta principal logada, nao use esse modo. Use `-UndoHollowBrowserPolicy` em PowerShell como Administrador para restaurar os valores anteriores salvos.
 
 Quando o script detecta perfis ou atalhos criados em uma execucao anterior, ele mostra uma tela de recuperacao antes de continuar:
 
@@ -79,11 +79,19 @@ Para fazer tudo no back, sem abrir navegador:
 .\New-EdgeProfiles.ps1 -Create -FullAuto -NoBrowser -ExtensionMode None
 ```
 
-Para fazer o modo oco funcionar de forma confiavel, aplique a politica antes e feche/reabra o Edge:
+Para desfazer a politica global e permitir a conta principal de novo:
 
 ```powershell
 # PowerShell como Administrador
-.\New-EdgeProfiles.ps1 -ApplyHollowBrowserPolicy
+cd F:\codex\config_contas_ms_edge
+.\New-EdgeProfiles.ps1 -UndoHollowBrowserPolicy
+```
+
+Para fazer o modo oco funcionar de forma confiavel, aceitando que isso tambem afeta a conta principal do Edge, aplique a politica antes e feche/reabra o Edge:
+
+```powershell
+# PowerShell como Administrador
+.\New-EdgeProfiles.ps1 -ApplyHollowBrowserPolicy -Force
 .\New-EdgeProfiles.ps1 -Create -FullAuto -NoBrowser -ExtensionMode None
 .\New-EdgeProfiles.ps1 -AuditFactoryProfiles
 ```
