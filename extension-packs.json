@@ -1,0 +1,143 @@
+{
+  "packs": {
+    "youtube-tecnico": {
+      "description": "Extensoes recomendadas para perfis de YouTube tecnico.",
+      "extensions": [
+        {
+          "name": "Adblock Plus",
+          "url": "https://microsoftedge.microsoft.com/addons/search/Adblock%20Plus",
+          "id": "",
+          "updateUrl": ""
+        },
+        {
+          "name": "OneNote Web Clipper",
+          "url": "https://microsoftedge.microsoft.com/addons/search/OneNote%20Web%20Clipper",
+          "id": "",
+          "updateUrl": ""
+        },
+        {
+          "name": "Captura de tela",
+          "url": "https://microsoftedge.microsoft.com/addons/search/Captura%20de%20tela",
+          "id": "",
+          "updateUrl": ""
+        },
+        {
+          "name": "Kaspersky Password Manager",
+          "url": "https://microsoftedge.microsoft.com/addons/search/Kaspersky%20Password%20Manager",
+          "id": "",
+          "updateUrl": ""
+        }
+      ]
+    },
+    "pesquisa": {
+      "description": "Extensoes para pesquisa academica, PDFs e anotacoes.",
+      "extensions": [
+        {
+          "name": "Zotero Connector",
+          "url": "https://microsoftedge.microsoft.com/addons/search/Zotero%20Connector",
+          "id": "",
+          "updateUrl": ""
+        },
+        {
+          "name": "Botao do Google Academico",
+          "url": "https://microsoftedge.microsoft.com/addons/search/Google%20Scholar%20Button",
+          "id": "",
+          "updateUrl": ""
+        },
+        {
+          "name": "Leitor de PDF do Google Academico",
+          "url": "https://microsoftedge.microsoft.com/addons/search/Google%20Scholar%20PDF%20Reader",
+          "id": "",
+          "updateUrl": ""
+        },
+        {
+          "name": "Open Access Helper",
+          "url": "https://microsoftedge.microsoft.com/addons/search/Open%20Access%20Helper",
+          "id": "",
+          "updateUrl": ""
+        },
+        {
+          "name": "OneNote Web Clipper",
+          "url": "https://microsoftedge.microsoft.com/addons/search/OneNote%20Web%20Clipper",
+          "id": "",
+          "updateUrl": ""
+        },
+        {
+          "name": "Google Docs off-line",
+          "url": "https://microsoftedge.microsoft.com/addons/search/Google%20Docs%20Offline",
+          "id": "",
+          "updateUrl": ""
+        },
+        {
+          "name": "Kaspersky Password Manager",
+          "url": "https://microsoftedge.microsoft.com/addons/search/Kaspersky%20Password%20Manager",
+          "id": "",
+          "updateUrl": ""
+        }
+      ]
+    },
+    "notebooklm": {
+      "description": "Extensoes para NotebookLM, fontes em PDF e escrita assistida.",
+      "extensions": [
+        {
+          "name": "NotebookLM PDF Downloader",
+          "url": "https://microsoftedge.microsoft.com/addons/search/NotebookLM%20PDF%20Downloader",
+          "id": "",
+          "updateUrl": ""
+        },
+        {
+          "name": "Google Docs off-line",
+          "url": "https://microsoftedge.microsoft.com/addons/search/Google%20Docs%20Offline",
+          "id": "",
+          "updateUrl": ""
+        },
+        {
+          "name": "OneNote Web Clipper",
+          "url": "https://microsoftedge.microsoft.com/addons/search/OneNote%20Web%20Clipper",
+          "id": "",
+          "updateUrl": ""
+        },
+        {
+          "name": "Kaspersky Password Manager",
+          "url": "https://microsoftedge.microsoft.com/addons/search/Kaspersky%20Password%20Manager",
+          "id": "",
+          "updateUrl": ""
+        }
+      ]
+    },
+    "pessoal": {
+      "description": "Extensoes para uso pessoal e entretenimento.",
+      "extensions": [
+        {
+          "name": "Adblock Plus",
+          "url": "https://microsoftedge.microsoft.com/addons/search/Adblock%20Plus",
+          "id": "",
+          "updateUrl": ""
+        },
+        {
+          "name": "Shazam",
+          "url": "https://microsoftedge.microsoft.com/addons/search/Shazam",
+          "id": "",
+          "updateUrl": ""
+        },
+        {
+          "name": "Kaspersky Password Manager",
+          "url": "https://microsoftedge.microsoft.com/addons/search/Kaspersky%20Password%20Manager",
+          "id": "",
+          "updateUrl": ""
+        }
+      ]
+    },
+    "cofre": {
+      "description": "Extensoes minimas para o perfil Cofre.",
+      "extensions": [
+        {
+          "name": "Kaspersky Password Manager",
+          "url": "https://microsoftedge.microsoft.com/addons/search/Kaspersky%20Password%20Manager",
+          "id": "",
+          "updateUrl": ""
+        }
+      ]
+    }
+  }
+}

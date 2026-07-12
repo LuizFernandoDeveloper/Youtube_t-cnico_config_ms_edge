@@ -1,0 +1,107 @@
+{
+  "baseDirectory": "C:\\EdgeProfiles",
+  "backupDirectory": ".\\Backups",
+  "createDesktopShortcuts": true,
+  "createStartMenuShortcuts": true,
+  "startMenuFolder": "YouTube Tecnico",
+  "profiles": [
+    {
+      "name": "YT - Engenharia",
+      "slug": "YT-Engenharia",
+      "extensionPack": "youtube-tecnico",
+      "startupPages": [
+        "https://www.youtube.com/",
+        "https://gemini.google.com/",
+        "https://notebooklm.google.com/"
+      ]
+    },
+    {
+      "name": "YT - Software",
+      "slug": "YT-Software",
+      "extensionPack": "youtube-tecnico",
+      "startupPages": [
+        "https://www.youtube.com/",
+        "https://github.com/",
+        "https://gemini.google.com/"
+      ]
+    },
+    {
+      "name": "YT - Cyber e Embarcados",
+      "slug": "YT-Cyber-Embarcados",
+      "extensionPack": "youtube-tecnico",
+      "startupPages": [
+        "https://www.youtube.com/",
+        "https://github.com/",
+        "https://gemini.google.com/"
+      ]
+    },
+    {
+      "name": "YT - Aerospace e Ciencias",
+      "slug": "YT-Aerospace-Ciencias",
+      "extensionPack": "youtube-tecnico",
+      "startupPages": [
+        "https://www.youtube.com/",
+        "https://scholar.google.com/",
+        "https://gemini.google.com/"
+      ]
+    },
+    {
+      "name": "YT - Academico",
+      "slug": "YT-Academico",
+      "extensionPack": "youtube-tecnico",
+      "startupPages": [
+        "https://www.youtube.com/",
+        "https://scholar.google.com/",
+        "https://gemini.google.com/"
+      ]
+    },
+    {
+      "name": "YT - Negocios",
+      "slug": "YT-Negocios",
+      "extensionPack": "youtube-tecnico",
+      "startupPages": [
+        "https://www.youtube.com/",
+        "https://gemini.google.com/",
+        "https://notebooklm.google.com/"
+      ]
+    },
+    {
+      "name": "NotebookLM e IA",
+      "slug": "NotebookLM-IA",
+      "extensionPack": "notebooklm",
+      "startupPages": [
+        "https://notebooklm.google.com/",
+        "https://gemini.google.com/",
+        "https://drive.google.com/"
+      ]
+    },
+    {
+      "name": "Pesquisa Academica",
+      "slug": "Pesquisa-Academica",
+      "extensionPack": "pesquisa",
+      "startupPages": [
+        "https://scholar.google.com/",
+        "https://www.zotero.org/",
+        "https://notebooklm.google.com/"
+      ]
+    },
+    {
+      "name": "Pessoal",
+      "slug": "Pessoal",
+      "extensionPack": "pessoal",
+      "startupPages": [
+        "https://www.youtube.com/",
+        "https://www.google.com/"
+      ]
+    },
+    {
+      "name": "Cofre",
+      "slug": "Cofre",
+      "extensionPack": "cofre",
+      "startupPages": [
+        "https://myaccount.google.com/",
+        "https://account.microsoft.com/"
+      ]
+    }
+  ]
+}
