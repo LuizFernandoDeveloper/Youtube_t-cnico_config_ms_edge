@@ -7,6 +7,7 @@
       "email": "andradeluizfernandorodrigues@gmail.com",
       "art": "00-conta-matriz-administracao-art.png",
       "card": "00-conta-matriz-administracao-card.png",
+      "icon": "00-conta-matriz-administracao.ico",
       "profileCodes": ["00", "01"]
     },
     {
@@ -16,6 +17,7 @@
       "email": "luiz.educacao.baseacademica@gmail.com",
       "art": "10-base-academica-art.png",
       "card": "10-base-academica-card.png",
+      "icon": "10-base-academica.ico",
       "profileCodes": ["10"]
     },
     {
@@ -25,6 +27,7 @@
       "email": "luiz.educacao.base.engenharia@gmail.com",
       "art": "20-engenharia-tecnologia-aplicada-art.png",
       "card": "20-engenharia-tecnologia-aplicada-card.png",
+      "icon": "20-engenharia-tecnologia-aplicada.ico",
       "profileCodes": ["20", "21", "22", "23", "24"]
     },
     {
@@ -34,6 +37,7 @@
       "email": "rodrigesadrade@gmail.com",
       "art": "30-conteudo-diversificado-art.png",
       "card": "30-conteudo-diversificado-card.png",
+      "icon": "30-conteudo-diversificado.ico",
       "profileCodes": ["30", "40", "41", "50", "60", "70"]
     }
   ],

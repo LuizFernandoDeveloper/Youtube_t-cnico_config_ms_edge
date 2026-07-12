@@ -76,7 +76,9 @@ function New-EdgeProfileShortcut {
         [string]$UserDataDir,
 
         [Parameter(Mandatory = $true)]
-        [string]$ProfileName
+        [string]$ProfileName,
+
+        [string]$IconPath
     )
 
     $shortcutDirectory = Split-Path -Parent $ShortcutPath
@@ -89,7 +91,12 @@ function New-EdgeProfileShortcut {
     $shortcut.TargetPath = $EdgePath
     $shortcut.Arguments = '--user-data-dir="{0}" --no-first-run' -f $UserDataDir
     $shortcut.WorkingDirectory = Split-Path -Parent $EdgePath
-    $shortcut.IconLocation = "$EdgePath,0"
+    if (-not [string]::IsNullOrWhiteSpace($IconPath) -and (Test-Path -LiteralPath $IconPath -PathType Leaf)) {
+        $shortcut.IconLocation = "$IconPath,0"
+    }
+    else {
+        $shortcut.IconLocation = "$EdgePath,0"
+    }
     $shortcut.Description = "Microsoft Edge isolado - $ProfileName"
     $shortcut.Save()
 
@@ -119,7 +126,12 @@ function New-EdgeProfileShortcuts {
             continue
         }
 
-        New-EdgeProfileShortcut -ShortcutPath $target.Path -EdgePath $EdgePath -UserDataDir $target.UserDataDir -ProfileName ([string]$target.Profile.name)
+        $iconPath = ""
+        if (Get-Command Get-ProfileShortcutIconPath -ErrorAction SilentlyContinue) {
+            $iconPath = Get-ProfileShortcutIconPath -Config $Config -Profile $target.Profile
+        }
+
+        New-EdgeProfileShortcut -ShortcutPath $target.Path -EdgePath $EdgePath -UserDataDir $target.UserDataDir -ProfileName ([string]$target.Profile.name) -IconPath $iconPath
         $created.Add($target.Path)
     }
 

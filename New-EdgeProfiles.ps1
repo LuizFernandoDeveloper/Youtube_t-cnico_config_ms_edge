@@ -18,11 +18,16 @@ param(
     [ValidateSet("Assisted", "Enterprise", "None")]
     [string]$ExtensionMode = "Assisted",
 
+    [switch]$ApplyBaseConfig,
+    [string]$BaseProfileSlug = "00-Administracao-Google",
+    [switch]$FullAuto,
+
     [switch]$UndoExtensionPolicies,
     [switch]$CloseAfterInit,
     [switch]$SkipEdgeInitialization,
     [switch]$Force,
     [switch]$NonInteractive,
+    [Alias("Auto", "Y")]
     [switch]$YesToAll
 )
 
@@ -34,11 +39,19 @@ $moduleRoot = Join-Path $scriptRoot "Modules"
 Import-Module (Join-Path $moduleRoot "Logger.psm1") -Force
 Import-Module (Join-Path $moduleRoot "ProfileManager.psm1") -Force
 Import-Module (Join-Path $moduleRoot "EdgeDetection.psm1") -Force
+Import-Module (Join-Path $moduleRoot "AccountBrandingManager.psm1") -Force
 Import-Module (Join-Path $moduleRoot "ShortcutManager.psm1") -Force
 Import-Module (Join-Path $moduleRoot "ExtensionManager.psm1") -Force
 Import-Module (Join-Path $moduleRoot "BackupManager.psm1") -Force
 Import-Module (Join-Path $moduleRoot "ChannelMapManager.psm1") -Force
 Import-Module (Join-Path $moduleRoot "SecurityAssistant.psm1") -Force
+
+if ($FullAuto) {
+    $YesToAll = $true
+    $ApplyBaseConfig = $true
+}
+
+$script:AutoApprovedAll = [bool]$YesToAll
 
 function Write-ValidationAndExit {
     param([string[]]$Errors)
@@ -86,6 +99,7 @@ function Read-ProfileExecutionPlan {
     }
 
     if ($NonInteractive -or $YesToAll) {
+        $script:AutoApprovedAll = $true
         return $status
     }
 
@@ -93,6 +107,7 @@ function Read-ProfileExecutionPlan {
         Write-Host ""
         Write-Host ("-" * 96) -ForegroundColor DarkGray
         Write-Host "Plano de perfis do Edge" -ForegroundColor Cyan
+        Write-Host "Observacao: estes ambientes aparecem pelos atalhos criados, nao no seletor interno do Edge padrao." -ForegroundColor Yellow
         Write-Host ("-" * 96) -ForegroundColor DarkGray
         foreach ($profile in $profiles) {
             $code = Get-ProfileCode -Profile $profile
@@ -134,6 +149,7 @@ function Read-ProfileExecutionPlan {
             foreach ($profile in $profiles) {
                 $status[[string]$profile.slug] = "Y"
             }
+            $script:AutoApprovedAll = $true
             return $status
         }
 
@@ -293,6 +309,10 @@ function Invoke-ManualBrandAccountCheck {
     $kasperskyStatus = Get-KasperskySecurityStatus
     Write-KasperskyManualLoginGuidance -Status $kasperskyStatus
     Write-Host ""
+    if (-not (Test-EdgeUserDataDirInUse -UserDataDir $UserDataDir)) {
+        Start-EdgeProfile -EdgePath $EdgePath -UserDataDir $UserDataDir -Urls @("https://www.youtube.com/") -NoFirstRun -NewWindow | Out-Null
+    }
+
     if (-not [string]::IsNullOrWhiteSpace($googleAccount)) {
         Write-Host "1. Entre manualmente na Conta Google:"
         Write-Host ("   {0}" -f $googleAccount) -ForegroundColor Yellow
@@ -626,11 +646,21 @@ function Invoke-CreateProfiles {
 
         if ($shouldInitialize) {
             Invoke-ProfileInitialization -EdgePath $edge.Path -Profile $profile -UserDataDir $profileDirectory
+        }
+
+        if ($shouldUpdateShortcut -or $shouldInitialize -or $ApplyBaseConfig) {
+            if (Test-EdgeUserDataDirInUse -UserDataDir $profileDirectory) {
+                Stop-EdgeProcessesForUserDataDir -UserDataDir $profileDirectory
+            }
+            Set-ProfileAccountConfiguration -Config $ConfigObject -BaseDirectory $BaseDirectory -Profile $profile -BaselineSourceSlug $BaseProfileSlug -ApplyBaseConfig:$ApplyBaseConfig
+        }
+
+        if ($shouldInitialize) {
             Invoke-ManualBrandAccountCheck -EdgePath $edge.Path -Profile $profile -UserDataDir $profileDirectory
         }
 
         if ($shouldInstallExtensions) {
-            Invoke-AssistedExtensionInstall -EdgePath $edge.Path -Profile $profile -UserDataDir $profileDirectory -ExtensionPacks $ExtensionPacksObject -NonInteractive:$NonInteractive -YesToAll:$YesToAll
+            Invoke-AssistedExtensionInstall -EdgePath $edge.Path -Profile $profile -UserDataDir $profileDirectory -ExtensionPacks $ExtensionPacksObject -NonInteractive:$NonInteractive -YesToAll:($YesToAll -or $script:AutoApprovedAll)
         }
     }
 }
@@ -641,6 +671,13 @@ $configObject = Read-JsonFile -Path $configPath
 $extensionPacksObject = Read-JsonFile -Path $extensionPacksPath
 
 $configDirectory = Split-Path -Parent $configPath
+if ($configObject.PSObject.Properties.Name -contains "_configDirectory") {
+    $configObject._configDirectory = $configDirectory
+}
+else {
+    $configObject | Add-Member -MemberType NoteProperty -Name "_configDirectory" -Value $configDirectory
+}
+
 $baseDirectory = Resolve-FactoryPath -Path ([string]$configObject.baseDirectory) -BasePath $configDirectory
 $backupDirectory = ".\Backups"
 if ($configObject.PSObject.Properties.Name -contains "backupDirectory" -and -not [string]::IsNullOrWhiteSpace([string]$configObject.backupDirectory)) {

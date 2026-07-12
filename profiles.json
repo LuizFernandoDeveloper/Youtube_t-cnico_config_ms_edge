@@ -11,25 +11,29 @@
       "label": "Conta matriz e administracao",
       "email": "andradeluizfernandorodrigues@gmail.com",
       "image": ".\\Assets\\accounts\\00-conta-matriz-administracao-card.png",
-      "art": ".\\Assets\\accounts\\00-conta-matriz-administracao-art.png"
+      "art": ".\\Assets\\accounts\\00-conta-matriz-administracao-art.png",
+      "icon": ".\\Assets\\accounts\\00-conta-matriz-administracao.ico"
     },
     "academica": {
       "label": "Base academica",
       "email": "luiz.educacao.baseacademica@gmail.com",
       "image": ".\\Assets\\accounts\\10-base-academica-card.png",
-      "art": ".\\Assets\\accounts\\10-base-academica-art.png"
+      "art": ".\\Assets\\accounts\\10-base-academica-art.png",
+      "icon": ".\\Assets\\accounts\\10-base-academica.ico"
     },
     "engenharia": {
       "label": "Engenharia e tecnologia aplicada",
       "email": "luiz.educacao.base.engenharia@gmail.com",
       "image": ".\\Assets\\accounts\\20-engenharia-tecnologia-aplicada-card.png",
-      "art": ".\\Assets\\accounts\\20-engenharia-tecnologia-aplicada-art.png"
+      "art": ".\\Assets\\accounts\\20-engenharia-tecnologia-aplicada-art.png",
+      "icon": ".\\Assets\\accounts\\20-engenharia-tecnologia-aplicada.ico"
     },
     "diversa": {
       "label": "Conteudo diversificado",
       "email": "rodrigesadrade@gmail.com",
       "image": ".\\Assets\\accounts\\30-conteudo-diversificado-card.png",
-      "art": ".\\Assets\\accounts\\30-conteudo-diversificado-art.png"
+      "art": ".\\Assets\\accounts\\30-conteudo-diversificado-art.png",
+      "icon": ".\\Assets\\accounts\\30-conteudo-diversificado.ico"
     }
   },
   "profiles": [
