@@ -610,6 +610,7 @@ function Set-EdgeProfileBranding {
         throw "Feche o Edge deste perfil antes de aplicar nome/foto/configuracao: $($Profile.slug)"
     }
 
+    $hollowResult = Clear-EdgeBrowserSigninState -UserDataDir $UserDataDir
     $profileName = [string]$Profile.name
     $avatarIndex = Get-AvatarIndexForProfile -Config $Config -Profile $Profile
     $imagePath = Get-ProfileAccountAssetPath -Config $Config -Profile $Profile -Kind "image"
@@ -644,14 +645,18 @@ function Set-EdgeProfileBranding {
         defaultBrandAccount = [string]$Profile.defaultBrandAccount
         accountImage = $imagePath
         accountIcon = $iconPath
+        hollowBrowserProfile = $true
         baselineSourceSlug = $BaselineSourceSlug
         baselineApplied = $BaselineApplied
         updatedAt = (Get-Date).ToString("s")
-        securityNote = "Nao contem senha, cookie, token nem credencial."
+        securityNote = "Perfil do navegador sem e-mail; nao contem senha, cookie, token nem credencial."
     }
     Write-JsonObject -Object $metadata -Path (Join-Path $metadataDirectory "profile-metadata.json")
 
     if (Get-Command Write-Log -ErrorAction SilentlyContinue) {
+        if ($hollowResult.Changed) {
+            Write-Log -Level "OK" -Message "Perfil do navegador deixado oco, sem e-mail/sync do Edge: $($Profile.slug)"
+        }
         Write-Log -Level "OK" -Message "Nome/foto/metadados aplicados ao perfil: $($Profile.slug)"
     }
 }

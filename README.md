@@ -37,6 +37,8 @@ Use `-AuditFactoryProfiles` para listar, sem abrir navegador, se algum perfil da
 
 Use `-SanitizeFactoryProfiles -NoBrowser` para limpar esse estado de login/sync do Edge nos perfis da fabrica sem tocar em senhas, cookies, tokens, cofre do Kaspersky ou dados de login de sites. O script cria backup dos arquivos antes de alterar.
 
+Por padrao, ao aplicar nome/foto/metadados, o script tambem deixa o perfil do navegador "oco": sem e-mail do Edge, sem sync do Edge e sem conta Microsoft/Windows gravada no card do perfil.
+
 Quando o script detecta perfis ou atalhos criados em uma execucao anterior, ele mostra uma tela de recuperacao antes de continuar:
 
 ```text

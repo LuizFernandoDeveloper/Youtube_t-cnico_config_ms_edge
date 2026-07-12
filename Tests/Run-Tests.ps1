@@ -213,14 +213,37 @@ try {
     Assert-True (-not ($targetAfterBaseline.PSObject.Properties.Name -contains "signin")) "signin nao deve ser copiado"
     Assert-True (Test-Path -LiteralPath (Join-Path $targetDir "Default\Bookmarks") -PathType Leaf) "Bookmarks devem ser copiados com backup seguro"
 
+    $targetAfterBaseline | Add-Member -MemberType NoteProperty -Name "account_info" -Value @([pscustomobject]@{ email = "conta-do-navegador@example.com" })
+    $targetAfterBaseline | Add-Member -MemberType NoteProperty -Name "signin" -Value ([pscustomobject]@{ allowed = $true })
+    $targetAfterBaseline | Add-Member -MemberType NoteProperty -Name "sync" -Value ([pscustomobject]@{ requested = $true })
+    $targetAfterBaseline | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath (Join-Path $targetDir "Default\Preferences") -Encoding UTF8
+
+    $targetLocalStateWithEmail = [pscustomobject]@{
+        profile = [pscustomobject]@{
+            info_cache = [pscustomobject]@{
+                Default = [pscustomobject]@{
+                    user_name = "conta-do-navegador@example.com"
+                    gaia_name = "Conta do Navegador"
+                    signin_required = $true
+                }
+            }
+        }
+    }
+    $targetLocalStateWithEmail | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath (Join-Path $targetDir "Local State") -Encoding UTF8
+
     Set-ProfileAccountConfiguration -Config $config -BaseDirectory $brandingTestRoot -Profile $engineeringProfile -BaselineSourceSlug "00-Administracao-Google" -ApplyBaseConfig
+    $signinAfterBranding = Get-EdgeBrowserSigninState -UserDataDir $targetDir
+    Assert-True (-not [bool]$signinAfterBranding.HasBrowserSigninState) "Branding deve deixar perfil do navegador oco, sem e-mail"
+
     $targetAfterBranding = Get-Content -LiteralPath (Join-Path $targetDir "Default\Preferences") -Raw -Encoding UTF8 | ConvertFrom-Json
     Assert-Equal ([string]$engineeringProfile.name) ([string]$targetAfterBranding.profile.name) "Nome interno do perfil deve ser aplicado"
+    Assert-True (-not ($targetAfterBranding.PSObject.Properties.Name -contains "account_info")) "Branding deve remover account_info"
 
     $metadataPath = Join-Path $targetDir ".edge-profile-factory\profile-metadata.json"
     Assert-True (Test-Path -LiteralPath $metadataPath -PathType Leaf) "Metadata de branding deve existir"
     $metadata = Get-Content -LiteralPath $metadataPath -Raw -Encoding UTF8 | ConvertFrom-Json
     Assert-Equal "20" ([string]$metadata.code) "Metadata deve conter codigo do perfil"
+    Assert-True ([bool]$metadata.hollowBrowserProfile) "Metadata deve registrar perfil oco do navegador"
     Assert-True (-not ($metadata.PSObject.Properties.Name -contains "password")) "Metadata nao deve conter campo password"
     Assert-True (-not ($metadata.PSObject.Properties.Name -contains "token")) "Metadata nao deve conter campo token"
     Assert-True (-not ($metadata.PSObject.Properties.Name -contains "cookie")) "Metadata nao deve conter campo cookie"
