@@ -136,6 +136,150 @@ function Invoke-ProfileInitialization {
     }
 }
 
+function Test-EdgeProfileInitializedDirectory {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$UserDataDir
+    )
+
+    $localState = Join-Path $UserDataDir "Local State"
+    $defaultDir = Join-Path $UserDataDir "Default"
+    return (Test-Path -LiteralPath $localState -PathType Leaf) -or (Test-Path -LiteralPath $defaultDir -PathType Container)
+}
+
+function Get-ExistingFactoryArtifacts {
+    param(
+        $ConfigObject,
+        [string]$BaseDirectory
+    )
+
+    $profileDirectories = New-Object System.Collections.Generic.List[object]
+    foreach ($profile in @($ConfigObject.profiles)) {
+        $profileDirectory = Get-ProfileDirectory -BaseDirectory $BaseDirectory -Profile $profile
+        if (Test-Path -LiteralPath $profileDirectory -PathType Container) {
+            $profileDirectories.Add([pscustomobject]@{
+                Profile = $profile
+                Path = $profileDirectory
+            })
+        }
+    }
+
+    $shortcuts = @(Get-ShortcutPlan -Config $ConfigObject -BaseDirectory $BaseDirectory | Where-Object {
+            Test-Path -LiteralPath $_.Path -PathType Leaf
+        })
+
+    return [pscustomobject]@{
+        ProfileDirectories = $profileDirectories.ToArray()
+        Shortcuts = $shortcuts
+        HasAny = (($profileDirectories.Count + $shortcuts.Count) -gt 0)
+    }
+}
+
+function Read-RecoveryMode {
+    param(
+        $Artifacts
+    )
+
+    if (-not $Artifacts.HasAny) {
+        return "Fresh"
+    }
+
+    if ($NonInteractive -or $Force) {
+        Write-Log -Level "INFO" -Message "Artefatos existentes detectados; continuando automaticamente por -NonInteractive/-Force."
+        return "Continue"
+    }
+
+    Write-Host ""
+    Write-Host ("-" * 72) -ForegroundColor DarkGray
+    Write-Host "Recuperacao de execucao anterior" -ForegroundColor Cyan
+    Write-Host ("Diretorios de perfil encontrados: {0}" -f $Artifacts.ProfileDirectories.Count)
+    Write-Host ("Atalhos encontrados: {0}" -f $Artifacts.Shortcuts.Count)
+    Write-Host ("-" * 72) -ForegroundColor DarkGray
+    Write-Host "1. Continuar de onde parou"
+    Write-Host "2. Apagar o que foi feito e sair"
+    Write-Host "3. Refazer tudo (backup + apagar + criar de novo)"
+    Write-Host "4. Decidir perfil por perfil"
+
+    while ($true) {
+        $choice = Read-Host "Escolha [1]"
+        if ([string]::IsNullOrWhiteSpace($choice) -or $choice -match "^(1|c|C)$") {
+            return "Continue"
+        }
+        if ($choice -match "^(2|a|A)$") {
+            return "Remove"
+        }
+        if ($choice -match "^(3|r|R)$") {
+            return "Recreate"
+        }
+        if ($choice -match "^(4|p|P)$") {
+            return "PerProfile"
+        }
+        Write-Host "Opcao invalida." -ForegroundColor Yellow
+    }
+}
+
+function Remove-ConfiguredProfileDirectories {
+    param(
+        $ConfigObject,
+        [string]$BaseDirectory
+    )
+
+    foreach ($profile in @($ConfigObject.profiles)) {
+        $profileDirectory = Get-ProfileDirectory -BaseDirectory $BaseDirectory -Profile $profile
+        if (-not (Test-Path -LiteralPath $profileDirectory -PathType Container)) {
+            continue
+        }
+
+        if (-not (Test-PathInsideDirectory -Path $profileDirectory -Directory $BaseDirectory)) {
+            throw "Remocao bloqueada; caminho fora do diretorio base: $profileDirectory"
+        }
+
+        if (Test-EdgeUserDataDirInUse -UserDataDir $profileDirectory) {
+            throw "Feche o Edge deste perfil antes de apagar/refazer: $($profile.slug)"
+        }
+    }
+
+    foreach ($profile in @($ConfigObject.profiles)) {
+        $profileDirectory = Get-ProfileDirectory -BaseDirectory $BaseDirectory -Profile $profile
+        if (Test-Path -LiteralPath $profileDirectory -PathType Container) {
+            Remove-Item -LiteralPath $profileDirectory -Recurse -Force
+            Write-Log -Level "OK" -Message "Diretorio removido: $profileDirectory"
+        }
+    }
+}
+
+function Invoke-RecoveryAction {
+    param(
+        [string]$RecoveryMode,
+        $ConfigObject,
+        [string]$ConfigPath,
+        [string]$ExtensionPacksPath,
+        [string]$BaseDirectory,
+        [string]$BackupDirectory
+    )
+
+    if ($RecoveryMode -notin @("Remove", "Recreate")) {
+        return $false
+    }
+
+    $artifacts = Get-ExistingFactoryArtifacts -ConfigObject $ConfigObject -BaseDirectory $BaseDirectory
+    if ($artifacts.ProfileDirectories.Count -gt 0) {
+        Write-Log -Level "INFO" -Message "Criando backup antes de apagar/refazer perfis existentes."
+        New-BackupSet -Config $ConfigObject -ConfigPath $ConfigPath -ExtensionPacksPath $ExtensionPacksPath -BaseDirectory $BaseDirectory -BackupDirectory $BackupDirectory | Out-Null
+    }
+
+    Remove-ConfiguredProfileDirectories -ConfigObject $ConfigObject -BaseDirectory $BaseDirectory
+    Remove-EdgeProfileShortcuts -Config $ConfigObject -BaseDirectory $BaseDirectory
+
+    if ($RecoveryMode -eq "Remove") {
+        Write-Log -Level "OK" -Message "Artefatos removidos. Execucao encerrada por escolha do usuario."
+        return $true
+    }
+
+    Write-Log -Level "OK" -Message "Ambiente limpo. Recriando perfis do zero."
+    return $false
+}
+
 function Recreate-ProfileDirectory {
     param(
         $ConfigObject,
@@ -171,15 +315,22 @@ function Invoke-CreateProfiles {
         [string]$BackupDirectory
     )
 
+    if (-not (Test-Path -LiteralPath $BaseDirectory)) {
+        New-Item -ItemType Directory -Path $BaseDirectory -Force | Out-Null
+        Write-Log -Level "OK" -Message "Diretorio base criado: $BaseDirectory"
+    }
+
+    $artifacts = Get-ExistingFactoryArtifacts -ConfigObject $ConfigObject -BaseDirectory $BaseDirectory
+    $recoveryMode = Read-RecoveryMode -Artifacts $artifacts
+    $stopAfterRecovery = Invoke-RecoveryAction -RecoveryMode $recoveryMode -ConfigObject $ConfigObject -ConfigPath $ConfigPath -ExtensionPacksPath $ExtensionPacksPath -BaseDirectory $BaseDirectory -BackupDirectory $BackupDirectory
+    if ($stopAfterRecovery) {
+        return
+    }
+
     $edge = Find-EdgeExecutable -PromptIfMissing -NonInteractive:$NonInteractive
 
     if (Test-AnyEdgeRunning) {
         Write-Log -Level "WARN" -Message "Ha processos do Edge em execucao. O script nao altera perfis internos, mas backup/recriacao exigem fechar o perfil alvo."
-    }
-
-    if (-not (Test-Path -LiteralPath $BaseDirectory)) {
-        New-Item -ItemType Directory -Path $BaseDirectory -Force | Out-Null
-        Write-Log -Level "OK" -Message "Diretorio base criado: $BaseDirectory"
     }
 
     Write-Log -Level "INFO" -Message "Hash do arquivo de configuracao: $(Get-FileSha256 -Path $ConfigPath)"
@@ -200,8 +351,13 @@ function Invoke-CreateProfiles {
             Write-Host ""
             Write-Host "[EXISTENTE] $($profile.name)" -ForegroundColor Yellow
 
-            if ($NonInteractive -or $Force) {
-                Write-Log -Level "INFO" -Message "Modo nao interativo/force: mantendo diretorio e atualizando atalho de $($profile.slug)."
+            if ($recoveryMode -eq "Continue" -or $NonInteractive -or $Force) {
+                Write-Log -Level "INFO" -Message "Continuando execucao: mantendo diretorio e atualizando atalho de $($profile.slug)."
+                if (-not (Test-EdgeProfileInitializedDirectory -UserDataDir $profileDirectory)) {
+                    Write-Log -Level "WARN" -Message "Diretorio existe, mas parece incompleto; inicializando novamente: $($profile.slug)"
+                    $shouldInitialize = $true
+                }
+                $shouldInstallExtensions = $shouldInitialize -and ($ExtensionMode -eq "Assisted")
             }
             else {
                 Write-Host "1. Manter"

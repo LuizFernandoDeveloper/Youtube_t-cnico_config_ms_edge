@@ -121,13 +121,9 @@ function Invoke-AssistedExtensionInstall {
         Write-Log -Level "WARN" -Message "Extensoes do perfil '$($Profile.name)' aguardam instalacao manual assistida."
     }
 
-    Write-Host ""
-    Write-Host "Extensoes recomendadas para $($Profile.name):" -ForegroundColor Cyan
-    foreach ($item in $items) {
-        Write-Host (" - {0}" -f $item.name)
-    }
-
     if ($NonInteractive) {
+        Write-Host ""
+        Write-Host "Extensoes recomendadas para $($Profile.name):" -ForegroundColor Cyan
         Write-Host "Modo nao interativo: paginas de extensoes nao serao abertas."
         foreach ($item in $items) {
             Write-Host ("   {0}: {1}" -f $item.name, $item.url)
@@ -135,13 +131,93 @@ function Invoke-AssistedExtensionInstall {
         return
     }
 
-    foreach ($item in $items) {
-        $answer = Read-Host "Abrir pagina de '$($item.name)' neste perfil? [S/n]"
-        if ([string]::IsNullOrWhiteSpace($answer) -or $answer -match "^[sSyY]") {
-            Start-EdgeProfile -EdgePath $EdgePath -UserDataDir $UserDataDir -Urls @([string]$item.url) -NoFirstRun -NewWindow | Out-Null
-            Read-Host "Instale manualmente se desejar e pressione Enter para continuar" | Out-Null
+    $selected = New-Object bool[] $items.Count
+    for ($index = 0; $index -lt $items.Count; $index++) {
+        $selected[$index] = $true
+    }
+
+    while ($true) {
+        Write-Host ""
+        Write-Host ("-" * 72) -ForegroundColor DarkGray
+        Write-Host "Extensoes assistidas" -ForegroundColor Cyan
+        Write-Host ("Perfil: {0}" -f $Profile.name)
+        Write-Host ("Pacote: {0}" -f $Profile.extensionPack) -ForegroundColor DarkGray
+        Write-Host ("-" * 72) -ForegroundColor DarkGray
+        for ($index = 0; $index -lt $items.Count; $index++) {
+            $mark = "[ ]"
+            $color = "DarkGray"
+            if ($selected[$index]) {
+                $mark = "[x]"
+                $color = "White"
+            }
+
+            Write-Host (" {0,2}. {1} {2}" -f ($index + 1), $mark, $items[$index].name) -ForegroundColor $color
+        }
+
+        Write-Host ""
+        Write-Host "Enter abre selecionadas | A aprova todas | 1 3 alterna itens | L limpa | T marca | P/N pula" -ForegroundColor Yellow
+        $answer = Read-Host "Comando"
+
+        if ([string]::IsNullOrWhiteSpace($answer) -or $answer -match "^[iI]$") {
+            break
+        }
+
+        if ($answer -match "^[aA]$") {
+            for ($index = 0; $index -lt $items.Count; $index++) {
+                $selected[$index] = $true
+            }
+            break
+        }
+
+        if ($answer -match "^[tT]$") {
+            for ($index = 0; $index -lt $items.Count; $index++) {
+                $selected[$index] = $true
+            }
+            continue
+        }
+
+        if ($answer -match "^[lL]$") {
+            for ($index = 0; $index -lt $items.Count; $index++) {
+                $selected[$index] = $false
+            }
+            continue
+        }
+
+        if ($answer -match "^[pPqQnN]$") {
+            Write-Log -Level "INFO" -Message "Instalacao assistida de extensoes ignorada para $($Profile.name)."
+            return
+        }
+
+        $numbers = @($answer -split "[,\s;]+" | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+        $changed = $false
+        foreach ($numberText in $numbers) {
+            $number = 0
+            if ([int]::TryParse($numberText, [ref]$number) -and $number -ge 1 -and $number -le $items.Count) {
+                $selected[$number - 1] = -not $selected[$number - 1]
+                $changed = $true
+            }
+        }
+
+        if (-not $changed) {
+            Write-Host "Comando invalido." -ForegroundColor Yellow
         }
     }
+
+    $urls = New-Object System.Collections.Generic.List[string]
+    for ($index = 0; $index -lt $items.Count; $index++) {
+        if ($selected[$index]) {
+            $urls.Add([string]$items[$index].url)
+        }
+    }
+
+    if ($urls.Count -eq 0) {
+        Write-Log -Level "INFO" -Message "Nenhuma extensao selecionada para $($Profile.name)."
+        return
+    }
+
+    Start-EdgeProfile -EdgePath $EdgePath -UserDataDir $UserDataDir -Urls $urls.ToArray() -NoFirstRun -NewWindow | Out-Null
+    Write-Log -Level "WARN" -Message "Instale manualmente as extensoes abertas para $($Profile.name)."
+    Read-Host "Quando terminar este perfil, pressione Enter para continuar" | Out-Null
 }
 
 function Test-IsAdministrator {

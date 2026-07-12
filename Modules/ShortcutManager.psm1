@@ -150,4 +150,30 @@ function Export-EdgeShortcuts {
     }
 }
 
-Export-ModuleMember -Function Get-SafeShortcutFileName, Get-ShortcutPlan, New-EdgeProfileShortcut, New-EdgeProfileShortcuts, Export-EdgeShortcuts
+function Remove-EdgeProfileShortcuts {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        $Config,
+
+        [Parameter(Mandatory = $true)]
+        [string]$BaseDirectory,
+
+        [string]$OnlySlug
+    )
+
+    foreach ($target in (Get-ShortcutPlan -Config $Config -BaseDirectory $BaseDirectory)) {
+        if ($OnlySlug -and ([string]$target.Profile.slug -ine $OnlySlug)) {
+            continue
+        }
+
+        if (Test-Path -LiteralPath $target.Path -PathType Leaf) {
+            Remove-Item -LiteralPath $target.Path -Force
+            if (Get-Command Write-Log -ErrorAction SilentlyContinue) {
+                Write-Log -Level "OK" -Message "Atalho removido: $($target.Path)"
+            }
+        }
+    }
+}
+
+Export-ModuleMember -Function Get-SafeShortcutFileName, Get-ShortcutPlan, New-EdgeProfileShortcut, New-EdgeProfileShortcuts, Export-EdgeShortcuts, Remove-EdgeProfileShortcuts

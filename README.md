@@ -15,3 +15,14 @@ Projeto PowerShell para criar ambientes isolados do Microsoft Edge usando `--use
 ```
 
 Por padrao, os perfis sao definidos em `profiles.json` e os pacotes de extensoes em `extension-packs.json`.
+
+Quando o script detecta perfis ou atalhos criados em uma execucao anterior, ele mostra uma tela de recuperacao antes de continuar:
+
+```text
+1. Continuar de onde parou
+2. Apagar o que foi feito e sair
+3. Refazer tudo (backup + apagar + criar de novo)
+4. Decidir perfil por perfil
+```
+
+No modo assistido de extensoes, a lista aparece marcada por padrao. Pressione `Enter` para abrir as selecionadas, digite numeros para alternar itens, `A` para aprovar todas ou `P`/`N` para pular.
