@@ -15,6 +15,9 @@ Projeto PowerShell para criar ambientes isolados do Microsoft Edge usando `--use
 .\New-EdgeProfiles.ps1 -InspectNativeProfiles
 .\New-EdgeProfiles.ps1 -AuditFactoryProfiles
 .\New-EdgeProfiles.ps1 -SanitizeFactoryProfiles -NoBrowser
+.\New-EdgeProfiles.ps1 -ShowBrowserPolicy
+.\New-EdgeProfiles.ps1 -ApplyHollowBrowserPolicy
+.\New-EdgeProfiles.ps1 -UndoHollowBrowserPolicy
 .\New-EdgeProfiles.ps1 -UpdateShortcuts
 .\New-EdgeProfiles.ps1 -Backup
 .\New-EdgeProfiles.ps1 -Restore -BackupPath ".\Backups\2026-07-12_173000"
@@ -38,6 +41,8 @@ Use `-AuditFactoryProfiles` para listar, sem abrir navegador, se algum perfil da
 Use `-SanitizeFactoryProfiles -NoBrowser` para limpar esse estado de login/sync do Edge nos perfis da fabrica sem tocar em senhas, cookies, tokens, cofre do Kaspersky ou dados de login de sites. O script cria backup dos arquivos antes de alterar.
 
 Por padrao, ao aplicar nome/foto/metadados, o script tambem deixa o perfil do navegador "oco": sem e-mail do Edge, sem sync do Edge e sem conta Microsoft/Windows gravada no card do perfil.
+
+Limite importante: o Edge pode recolocar a conta Microsoft/Windows quando o navegador abre. Para garantir perfil de navegador oco de verdade, use `-ApplyHollowBrowserPolicy` em um PowerShell aberto como Administrador. Isso aplica politicas do Edge no usuario atual: `BrowserSignin=0`, `SyncDisabled=1` e `HideFirstRunExperience=1`. O efeito e global para o Microsoft Edge desse usuario e pode mostrar o navegador como gerenciado. Use `-UndoHollowBrowserPolicy` para restaurar os valores anteriores salvos.
 
 Quando o script detecta perfis ou atalhos criados em uma execucao anterior, ele mostra uma tela de recuperacao antes de continuar:
 
@@ -72,6 +77,15 @@ Para fazer tudo no back, sem abrir navegador:
 
 ```powershell
 .\New-EdgeProfiles.ps1 -Create -FullAuto -NoBrowser -ExtensionMode None
+```
+
+Para fazer o modo oco funcionar de forma confiavel, aplique a politica antes e feche/reabra o Edge:
+
+```powershell
+# PowerShell como Administrador
+.\New-EdgeProfiles.ps1 -ApplyHollowBrowserPolicy
+.\New-EdgeProfiles.ps1 -Create -FullAuto -NoBrowser -ExtensionMode None
+.\New-EdgeProfiles.ps1 -AuditFactoryProfiles
 ```
 
 Depois, abra as paginas de extensoes recomendadas em uma fase separada:

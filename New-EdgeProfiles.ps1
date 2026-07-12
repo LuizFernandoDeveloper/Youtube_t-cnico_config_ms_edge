@@ -14,6 +14,9 @@ param(
     [switch]$InspectNativeProfiles,
     [switch]$AuditFactoryProfiles,
     [switch]$SanitizeFactoryProfiles,
+    [switch]$ApplyHollowBrowserPolicy,
+    [switch]$UndoHollowBrowserPolicy,
+    [switch]$ShowBrowserPolicy,
     [string]$BackupPath,
     [string]$RemoveProfile,
     [switch]$OpenAll,
@@ -50,6 +53,7 @@ Import-Module (Join-Path $moduleRoot "BackupManager.psm1") -Force
 Import-Module (Join-Path $moduleRoot "ChannelMapManager.psm1") -Force
 Import-Module (Join-Path $moduleRoot "SecurityAssistant.psm1") -Force
 Import-Module (Join-Path $moduleRoot "NativeEdgeProfileInspector.psm1") -Force
+Import-Module (Join-Path $moduleRoot "BrowserPolicyManager.psm1") -Force
 
 if ($FullAuto) {
     $YesToAll = $true
@@ -851,6 +855,7 @@ if ($configObject.PSObject.Properties.Name -contains "reportsDirectory" -and -no
     $reportsDirectory = [string]$configObject.reportsDirectory
 }
 $reportsDirectory = Resolve-FactoryPath -Path $reportsDirectory -BasePath $configDirectory
+$browserPolicyStatePath = Join-Path (Join-Path $baseDirectory "Logs") "edge-hollow-browser-policy-state.json"
 
 if ([string]::IsNullOrWhiteSpace($ChannelMap)) {
     if ($configObject.PSObject.Properties.Name -contains "channelMap" -and -not [string]::IsNullOrWhiteSpace([string]$configObject.channelMap)) {
@@ -897,6 +902,37 @@ if ($InspectNativeProfiles) {
     $nativeProfiles = @(Get-NativeEdgeProfiles)
     Write-NativeEdgeProfileReport -Profiles $nativeProfiles
     return
+}
+
+if ($ShowBrowserPolicy) {
+    Write-EdgeBrowserPolicyStatus -Status (Get-EdgeBrowserPolicyStatus)
+    if (-not $script:CreateExplicitlyRequested -and -not $ApplyHollowBrowserPolicy -and -not $UndoHollowBrowserPolicy) {
+        return
+    }
+}
+
+if ($UndoHollowBrowserPolicy) {
+    $policyStatus = Restore-EdgeHollowBrowserPolicies -StatePath $browserPolicyStatePath
+    Write-EdgeBrowserPolicyStatus -Status $policyStatus
+    Write-Log -Level "WARN" -Message "Politica de perfil oco desfeita. Feche e abra o Edge para o efeito mudar."
+    return
+}
+
+if ($ApplyHollowBrowserPolicy) {
+    try {
+        $policyStatus = Set-EdgeHollowBrowserPolicies -StatePath $browserPolicyStatePath
+    }
+    catch {
+        Write-Log -Level "ERROR" -Message "Nao foi possivel aplicar a politica de perfil oco: $($_.Exception.Message)"
+        Write-Log -Level "ERROR" -Message "Rode o PowerShell como Administrador e execute novamente: .\New-EdgeProfiles.ps1 -ApplyHollowBrowserPolicy"
+        throw
+    }
+
+    Write-EdgeBrowserPolicyStatus -Status $policyStatus
+    Write-Log -Level "OK" -Message "Politica aplicada: Edge sem login do navegador e sem sync. Feche e abra o Edge para valer."
+    if (-not $script:CreateExplicitlyRequested) {
+        return
+    }
 }
 
 if ($AuditFactoryProfiles) {

@@ -36,6 +36,7 @@ Import-Module (Join-Path $moduleRoot "ShortcutManager.psm1") -Force
 Import-Module (Join-Path $moduleRoot "ChannelMapManager.psm1") -Force
 Import-Module (Join-Path $moduleRoot "SecurityAssistant.psm1") -Force
 Import-Module (Join-Path $moduleRoot "NativeEdgeProfileInspector.psm1") -Force
+Import-Module (Join-Path $moduleRoot "BrowserPolicyManager.psm1") -Force
 
 $psFiles = @(Get-ChildItem -Path $root -Recurse -Include *.ps1, *.psm1)
 foreach ($file in $psFiles) {
@@ -60,6 +61,10 @@ Assert-True ($edgeDetectionScript.Contains("Stop-Process -Id `$process.ProcessId
 $shortcutManagerScript = Get-Content -LiteralPath (Join-Path $moduleRoot "ShortcutManager.psm1") -Raw -Encoding UTF8
 Assert-True ($shortcutManagerScript.Contains("--disable-sync")) "Atalhos devem desabilitar sync"
 Assert-True ($shortcutManagerScript.Contains("--disable-background-mode")) "Atalhos devem desabilitar background mode"
+
+$policyScript = Get-Content -LiteralPath (Join-Path $moduleRoot "BrowserPolicyManager.psm1") -Raw -Encoding UTF8
+Assert-True ($policyScript.Contains('"BrowserSignin" -PropertyType DWord -Value 0')) "Politica oca deve desativar browser sign-in"
+Assert-True ($policyScript.Contains('"SyncDisabled" -PropertyType DWord -Value 1')) "Politica oca deve desativar sync"
 
 $configPath = Join-Path $root "profiles.json"
 $packsPath = Join-Path $root "extension-packs.json"
@@ -120,6 +125,33 @@ foreach ($accountProperty in $config.accounts.PSObject.Properties) {
 $engineeringProfile = @($allProfiles | Where-Object { (Get-ProfileCode -Profile $_) -eq "20" }) | Select-Object -First 1
 $engineeringIcon = Get-ProfileShortcutIconPath -Config $config -Profile $engineeringProfile
 Assert-True (Test-Path -LiteralPath $engineeringIcon -PathType Leaf) "Perfil de engenharia deve resolver icone de atalho"
+
+$policyTestKey = "Registry::HKEY_CURRENT_USER\SOFTWARE\CodexEdgeProfileFactoryPolicyTest_{0}" -f ([Guid]::NewGuid().ToString("N"))
+$policyStatePath = Join-Path ([System.IO.Path]::GetTempPath()) ("edge-hollow-policy-state-{0}.json" -f ([Guid]::NewGuid().ToString("N")))
+try {
+    New-Item -Path $policyTestKey -Force | Out-Null
+    New-ItemProperty -Path $policyTestKey -Name "BrowserSignin" -PropertyType DWord -Value 1 -Force | Out-Null
+    New-ItemProperty -Path $policyTestKey -Name "ForceSync" -PropertyType DWord -Value 1 -Force | Out-Null
+
+    $hollowPolicyStatus = Set-EdgeHollowBrowserPolicies -StatePath $policyStatePath -RegistryPath $policyTestKey
+    Assert-True ([bool]$hollowPolicyStatus.HollowEnforced) "Politica deve impor perfil oco"
+    Assert-Equal 0 ([int]$hollowPolicyStatus.BrowserSignin) "BrowserSignin deve ficar desativado"
+    Assert-Equal 1 ([int]$hollowPolicyStatus.SyncDisabled) "SyncDisabled deve ficar ativado"
+    Assert-True (-not [bool]$hollowPolicyStatus.ForceSyncExists) "ForceSync deve ser removido"
+
+    $restoredPolicyStatus = Restore-EdgeHollowBrowserPolicies -StatePath $policyStatePath
+    Assert-Equal 1 ([int]$restoredPolicyStatus.BrowserSignin) "Restore deve recuperar BrowserSignin anterior"
+    Assert-True (-not [bool]$restoredPolicyStatus.SyncDisabledExists) "Restore deve remover SyncDisabled quando nao existia"
+    Assert-Equal 1 ([int]$restoredPolicyStatus.ForceSync) "Restore deve recuperar ForceSync anterior"
+}
+finally {
+    if (Test-Path -Path $policyTestKey) {
+        Remove-Item -Path $policyTestKey -Recurse -Force
+    }
+    if (Test-Path -LiteralPath $policyStatePath) {
+        Remove-Item -LiteralPath $policyStatePath -Force
+    }
+}
 
 $signinTestRoot = Join-Path ([System.IO.Path]::GetTempPath()) ("EdgeProfileFactorySigninTest_{0}" -f ([Guid]::NewGuid().ToString("N")))
 try {
